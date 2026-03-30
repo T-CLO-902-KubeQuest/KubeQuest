@@ -1,0 +1,30 @@
+# https://oneuptime.com/blog/post/2026-02-21-ansible-configure-swap-space/view#removing-swap-for-kubernetes-nodes
+# disable-swap.yml - Remove swap for K8s nodes
+---
+- name: Disable all active swap
+  ansible.builtin.command: swapoff -a
+  changed_when: false
+
+- name: Remove swap entries from fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '\sswap\s'
+    state: absent
+    backup: true
+
+- name: Remove swap file if it exists
+  ansible.builtin.file:
+    path: /swapfile
+    state: absent
+
+- name: Verify swap is disabled
+  ansible.builtin.command: swapon --show
+  register: swap_verify
+  changed_when: false
+
+- name: Confirm no swap is active
+  ansible.builtin.assert:
+    that:
+      - swap_verify.stdout == ""
+    fail_msg: "Swap is still active on {{ inventory_hostname }}"
+    success_msg: "Swap successfully disabled"

@@ -1,0 +1,11 @@
+[project]
+name = "kubequest-ansible"
+version = "0.1.0"
+description = "Ansible collection for KubeQuest"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "ansible>=13.5.0",
+    "boto3>=1.42.78",
+    "botocore>=1.42.78",
+]

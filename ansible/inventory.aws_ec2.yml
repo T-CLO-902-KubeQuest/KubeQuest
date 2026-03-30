@@ -1,0 +1,23 @@
+plugin: amazon.aws.aws_ec2
+
+regions:
+  - eu-central-1
+
+hostnames:
+  - dns-name
+
+include_filters:
+  - tag:Group:
+    - group-41
+
+groups:
+  masters:
+    - "'tag:Role' == 'control-plane'"
+  workers:
+    - "'tag:Role' == 'worker'"
+
+keyed_groups:
+  # add hosts to tag_Role_<value> groups for each aws_ec2 host's tags.Role variable.
+  - key: tags.Role
+    prefix: tag_Role_
+    separator: ""

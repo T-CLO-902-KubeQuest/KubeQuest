@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-world-service
+spec:
+  selector:
+    app: hello-world         # targets pods with this label
+  ports:
+  - protocol: TCP
+    port: 80                 # port the service listens on
+    targetPort: 80           # port on the pod to forward to
+  type: NodePort             # exposes the service outside the cluster

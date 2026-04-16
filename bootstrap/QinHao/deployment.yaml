@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world          # name of the deployment
+spec:
+  replicas: 2                # we want 2 pods running at all times
+  selector:
+    matchLabels:
+      app: hello-world       # manages pods with this label
+  template:                  # this is the pod template
+    metadata:
+      labels:
+        app: hello-world     # label applied to each pod
+    spec:
+      containers:
+      - name: hello-world
+        image: ealen/echo-server:latest
+        ports:
+        - containerPort: 80

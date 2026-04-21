@@ -5,3 +5,11 @@
   become: true
   roles:
     - common
+
+- name: Install Kubernetes tooling on cluster nodes
+  hosts: tag_Role_control_plane:tag_Role_worker
+  become: true
+  gather_facts: true
+  tags: kube-tools
+  roles:
+    - kube-tools

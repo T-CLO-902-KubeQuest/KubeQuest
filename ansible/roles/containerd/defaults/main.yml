@@ -1,0 +1,3 @@
+---
+container_runtime_systemd_cgroup: true
+container_runtime_sandbox_image: "registry.k8s.io/pause:3.9"

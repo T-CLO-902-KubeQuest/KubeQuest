@@ -37,3 +37,5 @@ override.tf.json
 terraform.rc
 
 .idea/**
+
+ansible/inventory.local.yml

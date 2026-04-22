@@ -10,6 +10,6 @@
   hosts: tag_Role_control_plane:tag_Role_worker
   become: true
   gather_facts: true
-  tags: kube-tools
+  tags: kubeadm
   roles:
-    - kube-tools
+    - kubeadm

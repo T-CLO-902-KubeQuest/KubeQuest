@@ -11,7 +11,7 @@
   become: true
   gather_facts: true
   roles:
-    - container-runtime
+    - containerd
 
 - name: Install Kubernetes tooling on cluster nodes
   hosts: aws_ec2

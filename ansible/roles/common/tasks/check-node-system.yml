@@ -1,0 +1,43 @@
+---
+- name: Check that the OS family is supported
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family in ['Debian', 'RedHat']
+    fail_msg: "{{ inventory_hostname }} runs {{ ansible_os_family }} which is not supported (Debian or RedHat required)"
+    success_msg: "{{ inventory_hostname }} runs {{ ansible_os_family }}"
+
+- name: Display the Linux kernel version
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }} is running kernel {{ ansible_kernel }}"
+
+# It is very likely that hardware devices will have unique addresses,
+# although some virtual machines may have identical values.
+# Kubernetes uses these values to uniquely identify the nodes in the cluster.
+# If these values are not unique to each node, the installation process may fail.
+#
+# Le product_uuid est un identifiant unique que le BIOS/UEFI de la machine expose au
+# système d'exploitation pour identifier ce matériel précis.
+- name: Gather the default network interface MAC address
+  ansible.builtin.set_fact:
+    node_mac: "{{ ansible_default_ipv4.macaddress }}"
+
+- name: Gather the product_uuid
+  ansible.builtin.command: cat /sys/class/dmi/id/product_uuid
+  register: product_uuid_result
+  changed_when: false
+
+- name: Set product_uuid fact
+  ansible.builtin.set_fact:
+    node_product_uuid: "{{ product_uuid_result.stdout }}"
+
+- name: Display MAC address and product_uuid
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }} — MAC: {{ node_mac }}, product_uuid: {{ node_product_uuid }}"
+
+- name: Verify each node has a unique MAC address and product_uuid couple
+  ansible.builtin.assert:
+    that:
+      - hostvars[item].node_mac != node_mac or hostvars[item].node_product_uuid != node_product_uuid
+    fail_msg: "{{ inventory_hostname }} and {{ item }} share the same MAC/product_uuid pair"
+    success_msg: "{{ inventory_hostname }} has a unique MAC/product_uuid pair compared to {{ item }}"
+  loop: "{{ ansible_play_hosts | reject('equalto', inventory_hostname) }}"

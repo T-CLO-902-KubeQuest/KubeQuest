@@ -1,4 +1,12 @@
 ---
+- name: Assert the target host for Red Hat family OS
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == 'RedHat'
+    fail_msg: >-
+      This role uses yum_repository and dnf, so it only supports Red Hat
+      family distributions (detected: {{ ansible_os_family }}).
+
 - name: Add the official Kubernetes RPM repository
   ansible.builtin.yum_repository:
     name: kubernetes
@@ -8,6 +16,9 @@
     gpgcheck: true
     gpgkey: "https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/rpm/repodata/repomd.xml.key"
     exclude:
+      # Exclude kube packages from regular dnf updates to prevent
+      # uncontrolled version drift. Packages are installed explicitly
+      # with disable_excludes in the next task.
       - kubelet
       - kubeadm
       - kubectl

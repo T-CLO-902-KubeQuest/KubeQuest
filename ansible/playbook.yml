@@ -5,3 +5,11 @@
   become: true
   roles:
     - common
+
+- name: Install Kubernetes tooling on cluster nodes
+  hosts: aws_ec2
+  become: true
+  gather_facts: true
+  tags: kubeadm
+  roles:
+    - kubeadm

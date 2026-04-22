@@ -11,9 +11,15 @@
 #   To make this change persistent across reboots, make sure swap is disabled in
 #   config files like /etc/fstab, systemd.swap, depending how it was configured on your system
 ---
+- name: Check if swap is currently active
+  ansible.builtin.command: swapon --show
+  register: swap_status
+  changed_when: false
+
 - name: Disable all active swap
   ansible.builtin.command: swapoff -a
-  changed_when: false
+  when: swap_status.stdout != ""
+  changed_when: swap_status.stdout != ""
 
 - name: Remove swap entries from fstab
   ansible.builtin.lineinfile:

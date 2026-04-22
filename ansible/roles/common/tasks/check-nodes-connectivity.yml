@@ -32,36 +32,15 @@
 # Port-specific checks (API server, etcd, kubelet, etc.) are handled
 # in the controlplane and worker roles, as required ports differ per role.
 
-- name: Check nodes have unique hostnames
+- name: Check node uniqueness and architecture homogeneity
   ansible.builtin.assert:
     that:
       - ansible_hostname != hostvars[item].ansible_hostname
-    fail_msg: "{{ inventory_hostname }} and {{ item }} share the same hostname: {{ ansible_hostname }}"
-    success_msg: "{{ inventory_hostname }} ({{ ansible_hostname }}) has a unique hostname compared to {{ item }}"
-  loop: "{{ ansible_play_hosts | reject('equalto', inventory_hostname) }}"
-
-- name: Check nodes have unique MAC address
-  ansible.builtin.assert:
-    that:
       - ansible_default_ipv4.macaddress != hostvars[item].ansible_default_ipv4.macaddress
-    fail_msg: "{{ inventory_hostname }} and {{ item }} share the same MAC address: {{ ansible_default_ipv4.macaddress }}"
-    success_msg: "{{ inventory_hostname }} has a unique MAC address compared to {{ item }}"
-  loop: "{{ ansible_play_hosts | reject('equalto', inventory_hostname) }}"
-
-- name: Check nodes have unique product_uuid
-  ansible.builtin.assert:
-    that:
-      - node_product_uuid != hostvars[item].node_product_uuid
-    fail_msg: "{{ inventory_hostname }} and {{ item }} share the same product_uuid: {{ node_product_uuid }}"
-    success_msg: "{{ inventory_hostname }} has a unique product_uuid compared to {{ item }}"
-  loop: "{{ ansible_play_hosts | reject('equalto', inventory_hostname) }}"
-
-- name: Check nodes have homogeneous architecture
-  ansible.builtin.assert:
-    that:
+      - ansible_product_uuid != hostvars[item].ansible_product_uuid
       - ansible_architecture == hostvars[item].ansible_architecture
-    fail_msg: "Architecture mismatch: {{ inventory_hostname }} is {{ ansible_architecture }} but {{ item }} is {{ hostvars[item].ansible_architecture }}"
-    success_msg: "{{ inventory_hostname }} and {{ item }} share the same architecture ({{ ansible_architecture }})"
+    fail_msg: "{{ inventory_hostname }} and {{ item }} have a conflict (duplicate hostname, MAC, product_uuid, or architecture mismatch)"
+    success_msg: "{{ inventory_hostname }} and {{ item }} are unique and share the same architecture"
   loop: "{{ ansible_play_hosts | reject('equalto', inventory_hostname) }}"
 
 # CNI plugin ports availability check is not implemented yet.

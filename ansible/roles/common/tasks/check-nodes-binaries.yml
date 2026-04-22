@@ -1,0 +1,32 @@
+---
+- name: Check that the node system provides glibc
+  ansible.builtin.command: ldd --version
+  register: glibc_check
+  changed_when: false
+  failed_when: glibc_check.rc != 0
+
+- name: Display glibc version
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }} has glibc: {{ glibc_check.stdout_lines[0] }}"
+
+- name: Check that required binaries are present
+  ansible.builtin.shell: "command -v {{ item }}"
+  loop:
+    - iptables
+    - conntrack
+    - socat
+    - tc
+    - ip
+  register: binaries_check
+  changed_when: false
+  failed_when: false
+
+- name: Verify all required binaries are available
+  ansible.builtin.assert:
+    that:
+      - item.rc == 0
+    fail_msg: "{{ inventory_hostname }} is missing required binary: {{ item.item }}"
+    success_msg: "{{ inventory_hostname }} has {{ item.item }}"
+  loop: "{{ binaries_check.results }}"
+  loop_control:
+    label: "{{ item.item }}"

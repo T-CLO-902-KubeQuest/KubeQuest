@@ -1,0 +1,14 @@
+---
+- name: Check that the node has at least 2Gb of RAM
+  ansible.builtin.assert:
+    that:
+      - ansible_memtotal_mb >= 2048
+    fail_msg: "Node {{ inventory_hostname }} has only {{ ansible_memtotal_mb }}MB of RAM (minimum 2048MB required)"
+    success_msg: "Node {{ inventory_hostname }} has {{ ansible_memtotal_mb }}MB of RAM"
+
+- name: Check that the node has at least 2 CPUs
+  ansible.builtin.assert:
+    that:
+      - ansible_processor_vcpus >= 2
+    fail_msg: "Node {{ inventory_hostname }} has only {{ ansible_processor_vcpus }} CPU(s) (minimum 2 required)"
+    success_msg: "Node {{ inventory_hostname }} has {{ ansible_processor_vcpus }} CPU(s)"

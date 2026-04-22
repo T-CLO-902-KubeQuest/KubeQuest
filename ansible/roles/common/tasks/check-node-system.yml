@@ -1,0 +1,22 @@
+---
+- name: Check that the OS family is supported
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family in ['Debian', 'RedHat']
+    fail_msg: "{{ inventory_hostname }} runs {{ ansible_os_family }} which is not supported (Debian or RedHat required)"
+    success_msg: "{{ inventory_hostname }} runs {{ ansible_os_family }}"
+
+- name: Display the Linux kernel version
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }} is running kernel {{ ansible_kernel }}"
+
+# It is very likely that hardware devices will have unique addresses,
+# although some virtual machines may have identical values.
+# Kubernetes uses these values to uniquely identify the nodes in the cluster.
+# If these values are not unique to each node, the installation process may fail.
+#
+# Le product_uuid est un identifiant unique que le BIOS/UEFI de la machine expose au
+# système d'exploitation pour identifier ce matériel précis.
+- name: Display MAC address and product_uuid
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }} — MAC: {{ ansible_default_ipv4.macaddress }}, product_uuid: {{ ansible_product_uuid }}"

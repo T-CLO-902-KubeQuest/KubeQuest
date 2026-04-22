@@ -1,1 +1,0 @@
-# KubeQuest - Ansible Playbook

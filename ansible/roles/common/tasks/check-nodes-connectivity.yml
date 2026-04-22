@@ -1,0 +1,47 @@
+---
+# If you have more than one network adapter,
+# and your Kubernetes components are not reachable on the default route,
+# we recommend you add IP route(s) so Kubernetes cluster addresses go via
+# the appropriate adapter
+#
+- name: Check the number of network adapters
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }} has {{ ansible_interfaces | length }} network interface(s): {{ ansible_interfaces | join(', ') }}"
+
+- name: Warn if node has multiple network adapters
+  ansible.builtin.debug:
+    msg: "WARNING: {{ inventory_hostname }} has multiple network adapters — ensure Kubernetes traffic routes through the correct one"
+  when: ansible_interfaces | length > 2  # lo + 1 real interface is normal
+
+- name: Check network connectivity between all the nodes
+  ansible.builtin.command: "ping -c 1 -W 2 {{ hostvars[item].ansible_default_ipv4.address }}"
+  loop: "{{ ansible_play_hosts | reject('equalto', inventory_hostname) }}"
+  changed_when: false
+  register: ping_results
+
+- name: Verify all nodes are reachable
+  ansible.builtin.assert:
+    that:
+      - item.rc == 0
+    fail_msg: "{{ inventory_hostname }} cannot reach {{ item.item }} at {{ hostvars[item.item].ansible_default_ipv4.address }}"
+    success_msg: "{{ inventory_hostname }} can reach {{ item.item }}"
+  loop: "{{ ping_results.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+# Port-specific checks (API server, etcd, kubelet, etc.) are handled
+# in the controlplane and worker roles, as required ports differ per role.
+
+- name: Check node uniqueness and architecture homogeneity
+  ansible.builtin.assert:
+    that:
+      - ansible_hostname != hostvars[item].ansible_hostname
+      - ansible_default_ipv4.macaddress != hostvars[item].ansible_default_ipv4.macaddress
+      - ansible_product_uuid != hostvars[item].ansible_product_uuid
+      - ansible_architecture == hostvars[item].ansible_architecture
+    fail_msg: "{{ inventory_hostname }} and {{ item }} have a conflict (duplicate hostname, MAC, product_uuid, or architecture mismatch)"
+    success_msg: "{{ inventory_hostname }} and {{ item }} are unique and share the same architecture"
+  loop: "{{ ansible_play_hosts | reject('equalto', inventory_hostname) }}"
+
+# CNI plugin ports availability check is not implemented yet.
+# The required ports depend on the chosen CNI plugin (Calico, Flannel, Cilium, etc.).

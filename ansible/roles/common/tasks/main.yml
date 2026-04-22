@@ -1,1 +1,5 @@
+- import_tasks: check-node-system.yml
+- import_tasks: check-nodes-resources.yml
+- import_tasks: check-nodes-connectivity.yml
+- import_tasks: check-nodes-binaries.yml
 - import_tasks: disable-swap.yml

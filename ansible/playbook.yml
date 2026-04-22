@@ -1,33 +1,7 @@
 ---
-- name: Check the operating system
+- name: Prepare Linux nodes for Kubernetes
   hosts: aws_ec2
   gather_facts: true
-  tasks:
-    - name: Display OS information
-      ansible.builtin.debug:
-        msg:
-          - "OS family: {{ ansible_facts['os_family'] }}"
-          - "System: {{ ansible_facts['system'] }}"
-          - "Python version: {{ ansible_facts['python_version'] }}"
-          - "Package manager: {{ ansible_facts['pkg_mgr'] }}"
-          - "Total RAM: {{ (ansible_facts['memtotal_mb']  / 1024) | round(2) }} Gb"
-          - "Total vCPUs: {{ ansible_facts['processor_vcpus'] }}"
-
-    - name: Check SSH connectivity between all nodes 
-      wait_for:
-        host: "{{ item }}"
-        port: 22
-        state: started
-        delay: 0
-        timeout: 5
-      loop: "{{ groups['aws_ec2'] | difference([inventory_hostname]) }}"
-
-    - name: Check Kubernetes API access from workers
-      wait_for:
-        host: "{{ item }}"
-        port: 6443
-        state: started
-        delay: 0
-        timeout: 5
-      loop: "{{ groups['tag_Role_control_plane'] }}"
-      when: inventory_hostname in groups['tag_Role_worker']
+  become: true
+  roles:
+    - common

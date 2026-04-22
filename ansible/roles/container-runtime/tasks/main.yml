@@ -1,0 +1,4 @@
+- import_tasks: kernel-modules.yml
+- import_tasks: sysctl.yml
+- import_tasks: install-containerd.yml
+- import_tasks: configure-containerd.yml

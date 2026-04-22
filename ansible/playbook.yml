@@ -6,6 +6,13 @@
   roles:
     - common
 
+- name: Configure container runtime
+  hosts: aws_ec2
+  become: true
+  gather_facts: true
+  roles:
+    - container-runtime
+
 - name: Install Kubernetes tooling on cluster nodes
   hosts: aws_ec2
   become: true

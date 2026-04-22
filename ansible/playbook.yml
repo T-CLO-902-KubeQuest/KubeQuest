@@ -7,7 +7,7 @@
     - common
 
 - name: Install Kubernetes tooling on cluster nodes
-  hosts: tag_Role_control_plane:tag_Role_worker
+  hosts: aws_ec2
   become: true
   gather_facts: true
   tags: kubeadm

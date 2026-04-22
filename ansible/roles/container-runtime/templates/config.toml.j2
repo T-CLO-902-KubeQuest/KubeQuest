@@ -11,4 +11,4 @@ version = 2
     runtime_type = "io.containerd.runc.v2"
 
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
-    SystemdCgroup = "{{ container_runtime_systemd_cgroup | string | lower }}"
+    SystemdCgroup = {{ container_runtime_systemd_cgroup | lower }}

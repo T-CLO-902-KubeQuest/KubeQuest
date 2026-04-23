@@ -5,3 +5,25 @@
   become: true
   roles:
     - common
+
+- name: Configure container runtime
+  hosts: aws_ec2
+  become: true
+  gather_facts: true
+  roles:
+    - containerd
+
+- name: Install Kubernetes tooling on cluster nodes
+  hosts: aws_ec2
+  become: true
+  gather_facts: true
+  tags: kubeadm
+  roles:
+    - kubeadm
+
+- name: Initialise Kubernetes control-plane
+  hosts: tag_Role_control_plane
+  become: true
+  gather_facts: true
+  roles:
+    - control-plane

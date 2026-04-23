@@ -7,6 +7,5 @@
 - name: Run kubeadm init
   ansible.builtin.command: >
     kubeadm init
-    --pod-network-cidr=10.244.0.0/16
     --apiserver-advertise-address={{ ansible_default_ipv4.address }}
   when: not admin_conf.stat.exists

@@ -8,4 +8,5 @@
   ansible.builtin.command: >
     kubeadm init
     --apiserver-advertise-address={{ ansible_default_ipv4.address }}
+    --pod-network-cidr={{ kubernetes_pod_subnet }}
   when: not admin_conf.stat.exists

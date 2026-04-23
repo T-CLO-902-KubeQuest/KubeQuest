@@ -1,0 +1,7 @@
+---
+cilium_version: "1.16.5"
+cilium_namespace: "kube-system"
+cilium_manifest_src: "cilium.yaml"
+cilium_manifest_remote_path: "/etc/kubernetes/manifests-extra/cilium.yaml"
+cilium_kubeconfig: "/etc/kubernetes/admin.conf"
+cilium_wait_timeout: "300s"

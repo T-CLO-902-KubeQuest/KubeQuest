@@ -27,3 +27,10 @@
   gather_facts: true
   roles:
     - control-plane
+
+- name: Join worker nodes to the cluster
+  hosts: workers
+  become: true
+  gather_facts: true
+  roles:
+    - workers

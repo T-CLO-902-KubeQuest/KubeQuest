@@ -1,0 +1,33 @@
+---
+# ansible/roles/workers/tasks/main.yml
+
+- name: "Check if the worker node is already part of the cluster"
+  ansible.builtin.stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: kubelet_conf
+
+- name: "Dynamically retrieve join command from the control-plane"
+  ansible.builtin.command: kubeadm token create --print-join-command
+  register: kubernetes_join_command
+  delegate_to: "{{ groups['masters'][0] }}"
+  run_once: true
+  when: not kubelet_conf.stat.exists
+  changed_when: false
+  # Task is delegated to the first host in the 'masters' group.
+  # run_once prevents overloading the master if multiple workers are being joined.
+
+- name: "Join the worker node to the Kubernetes cluster"
+  ansible.builtin.command: "{{ kubernetes_join_command.stdout }}"
+  when: not kubelet_conf.stat.exists and kubernetes_join_command is defined and kubernetes_join_command.stdout is defined
+  changed_when: true
+
+- name: "Verify that kubelet.conf exists after join"
+  ansible.builtin.stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: kubelet_conf_post
+  when: not kubelet_conf.stat.exists
+
+- name: "Fail if join did not produce kubelet.conf"
+  ansible.builtin.fail:
+    msg: "kubeadm join completed but /etc/kubernetes/kubelet.conf was not created. Check kubelet logs."
+  when: not kubelet_conf.stat.exists and (kubelet_conf_post.stat is not defined or not kubelet_conf_post.stat.exists)

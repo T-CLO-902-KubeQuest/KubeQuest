@@ -28,6 +28,13 @@
   roles:
     - control-plane
 
+- name: Deploy the Cilium CNI
+  hosts: masters
+  become: true
+  gather_facts: true
+  roles:
+    - cilium
+
 - name: Join worker nodes to the cluster
   hosts: workers
   become: true

@@ -1,0 +1,17 @@
+---
+# ansible/deploy_workers.yml
+
+- name: "Verify connectivity and prerequisites on all nodes"
+  hosts: all
+  become: true
+  roles:
+    - common
+  # 'common' role ensures swap is disabled and network is prepared
+
+- name: "Dynamically join workers to the cluster initialized by the master"
+  hosts: workers
+  become: true
+  roles:
+    - role: kubernetes_worker_join
+  # This role retrieves the token from 'kube-1' (in the 'control_plane' group) 
+  # and uses it to join 'kube-2' (in the 'workers' group) without hardcoded secrets.

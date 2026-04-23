@@ -31,6 +31,8 @@
       - "kubelet-{{ kubernetes_package_version }}"
       - "kubeadm-{{ kubernetes_package_version }}"
       - "kubectl-{{ kubernetes_package_version }}"
+      - cri-tools
+      - kubernetes-cni
     state: present
     disable_excludes: kubernetes
 

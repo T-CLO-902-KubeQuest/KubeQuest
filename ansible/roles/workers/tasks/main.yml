@@ -11,15 +11,14 @@
   register: kubernetes_join_command
   delegate_to: "{{ groups['masters'][0] }}"
   run_once: true
-  when: not kubelet_conf.stat.exists
   changed_when: false
-  # Task is delegated to the first host in the 'masters' group.
-  # run_once prevents overloading the master if multiple workers are being joined.
+  no_log: true
 
 - name: "Join the worker node to the Kubernetes cluster"
   ansible.builtin.command: "{{ kubernetes_join_command.stdout }}"
-  when: not kubelet_conf.stat.exists and kubernetes_join_command is defined and kubernetes_join_command.stdout is defined
+  when: not kubelet_conf.stat.exists
   changed_when: true
+  no_log: true
 
 - name: "Verify that kubelet.conf exists after join"
   ansible.builtin.stat:

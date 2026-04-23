@@ -10,7 +10,7 @@
     msg: "{{ inventory_hostname }} has glibc: {{ glibc_check.stdout_lines[0] }}"
 
 - name: Check that required binaries are present
-  ansible.builtin.shell: "command -v {{ item }}"
+  ansible.builtin.command: "which {{ item }}"
   loop:
     - iptables
     - conntrack

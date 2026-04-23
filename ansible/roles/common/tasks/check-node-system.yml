@@ -20,3 +20,14 @@
 - name: Display MAC address and product_uuid
   ansible.builtin.debug:
     msg: "{{ inventory_hostname }} — MAC: {{ ansible_default_ipv4.macaddress }}, product_uuid: {{ ansible_product_uuid }}"
+
+- name: Check node uniqueness and architecture homogeneity
+  ansible.builtin.assert:
+    that:
+      - ansible_hostname != hostvars[item].ansible_hostname
+      - ansible_default_ipv4.macaddress != hostvars[item].ansible_default_ipv4.macaddress
+      - ansible_product_uuid != hostvars[item].ansible_product_uuid
+      - ansible_architecture == hostvars[item].ansible_architecture
+    fail_msg: "{{ inventory_hostname }} and {{ item }} have a conflict (duplicate hostname, MAC, product_uuid, or architecture mismatch)"
+    success_msg: "{{ inventory_hostname }} and {{ item }} are unique and share the same architecture"
+  loop: "{{ ansible_play_hosts | reject('equalto', inventory_hostname) }}"

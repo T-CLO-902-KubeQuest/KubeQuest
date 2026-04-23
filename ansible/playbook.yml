@@ -22,7 +22,7 @@
     - kubeadm
 
 - name: Initialise Kubernetes control-plane
-  hosts: tag_Role_control_plane
+  hosts: masters
   become: true
   gather_facts: true
   roles:

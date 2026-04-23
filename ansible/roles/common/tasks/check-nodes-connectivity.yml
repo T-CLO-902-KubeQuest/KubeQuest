@@ -31,17 +31,6 @@
 
 # Port-specific checks (API server, etcd, kubelet, etc.) are handled
 # in the controlplane and worker roles, as required ports differ per role.
-
-- name: Check node uniqueness and architecture homogeneity
-  ansible.builtin.assert:
-    that:
-      - ansible_hostname != hostvars[item].ansible_hostname
-      - ansible_default_ipv4.macaddress != hostvars[item].ansible_default_ipv4.macaddress
-      - ansible_product_uuid != hostvars[item].ansible_product_uuid
-      - ansible_architecture == hostvars[item].ansible_architecture
-    fail_msg: "{{ inventory_hostname }} and {{ item }} have a conflict (duplicate hostname, MAC, product_uuid, or architecture mismatch)"
-    success_msg: "{{ inventory_hostname }} and {{ item }} are unique and share the same architecture"
-  loop: "{{ ansible_play_hosts | reject('equalto', inventory_hostname) }}"
-
+#
 # CNI plugin ports availability check is not implemented yet.
 # The required ports depend on the chosen CNI plugin (Calico, Flannel, Cilium, etc.).

@@ -1,4 +1,13 @@
 ---
+- name: Install the binaries required by kubeadm and Cilium
+  ansible.builtin.package:
+    name:
+      - iptables
+      - conntrack-tools
+      - socat
+      - iproute-tc
+    state: present
+
 - name: Check that the node system provides glibc
   ansible.builtin.command: ldd --version
   register: glibc_check

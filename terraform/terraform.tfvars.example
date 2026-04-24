@@ -1,0 +1,8 @@
+subscription_id      = "00000000-0000-0000-0000-000000000000"
+location             = "westeurope"
+group                = "group-41"
+vm_size              = "Standard_B2s"
+admin_username       = "rocky"
+ssh_public_key_path  = "~/.ssh/id_rsa.pub"
+ssh_private_key_path = "~/.ssh/id_rsa"
+allowed_ssh_cidr     = "0.0.0.0/0"

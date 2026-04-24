@@ -1,0 +1,25 @@
+all:
+  vars:
+    ansible_user: ${admin_username}
+    ansible_ssh_private_key_file: ${ssh_private_key_path}
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+  children:
+    masters:
+      vars:
+        apiserver_cert_extra_sans:
+%{ for name, ip in masters ~}
+          - ${ip}
+%{ endfor ~}
+      hosts:
+%{ for name, ip in masters ~}
+        ${name}:
+          ansible_host: ${ip}
+%{ endfor ~}
+    workers:
+      vars:
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand=\"ssh -W %h:%p -q -i ${ssh_private_key_path} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${admin_username}@${bastion_ip}\""
+      hosts:
+%{ for name, ip in workers ~}
+        ${name}:
+          ansible_host: ${ip}
+%{ endfor ~}

@@ -1,0 +1,21 @@
+all:
+  vars:
+    ansible_user: rocky
+    ansible_ssh_private_key_file: ~/.ssh/kubequest_azure
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+  children:
+    masters:
+      vars:
+        apiserver_cert_extra_sans:
+          - 20.91.198.43
+      hosts:
+        master-1:
+          ansible_host: 20.91.198.43
+    workers:
+      vars:
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand=\"ssh -W %h:%p -q -i ~/.ssh/kubequest_azure -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null rocky@20.91.198.43\""
+      hosts:
+        worker-1:
+          ansible_host: 10.42.1.7
+        worker-2:
+          ansible_host: 10.42.1.4

@@ -1,20 +1,20 @@
 ---
 - name: Prepare Linux nodes for Kubernetes
-  hosts: aws_ec2
+  hosts: all
   gather_facts: true
   become: true
   roles:
     - common
 
 - name: Configure container runtime
-  hosts: aws_ec2
+  hosts: all
   become: true
   gather_facts: true
   roles:
     - containerd
 
 - name: Install Kubernetes tooling on cluster nodes
-  hosts: aws_ec2
+  hosts: all
   become: true
   gather_facts: true
   tags: kubeadm
@@ -27,6 +27,13 @@
   gather_facts: true
   roles:
     - control-plane
+
+- name: Deploy the Cilium CNI
+  hosts: masters
+  become: true
+  gather_facts: true
+  roles:
+    - cilium
 
 - name: Join worker nodes to the cluster
   hosts: workers

@@ -1,2 +1,3 @@
 kubernetes_version: "1.33"
 kubernetes_package_version: "1.33.11"
+kubernetes_pod_subnet: "10.244.0.0/16"

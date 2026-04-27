@@ -1,0 +1,35 @@
+---
+# Cilium values used to render files/cilium.yaml.
+# Regenerate the manifest with:
+#   helm repo add cilium https://helm.cilium.io
+#   helm repo update
+#   helm template cilium cilium/cilium \
+#     --version <CILIUM_VERSION> \
+#     --namespace kube-system \
+#     --values ansible/roles/cilium/files/values.yaml \
+#     > ansible/roles/cilium/files/cilium.yaml
+
+# Keep kube-proxy in place for now. Replacing kube-proxy requires
+# k8sServiceHost/Port pointing at the API server, which is cluster-specific
+# and cannot be baked into a vendored manifest. Revisit in the network-bonus
+# work when values templating is wired up.
+kubeProxyReplacement: false
+
+ipam:
+  mode: "cluster-pool"
+  operator:
+    clusterPoolIPv4PodCIDRList:
+      - "10.244.0.0/16"
+    clusterPoolIPv4MaskSize: 24
+
+# Enable Hubble for future observability work. UI stays disabled to avoid
+# exposing extra services by default.
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: false
+
+operator:
+  replicas: 1

@@ -11,13 +11,19 @@ include_filters:
     - group-41
 
 groups:
-  masters:
-    - "'tag:Role' == 'control-plane'"
-  workers:
-    - "'tag:Role' == 'worker'"
+  masters: "tags.Role == 'control-plane'"
+  workers: "tags.Role == 'worker'"
+  aws_masters: "tags.Role == 'control-plane'"
+  aws_workers: "tags.Role == 'worker'"
 
 keyed_groups:
   # add hosts to tag_Role_<value> groups for each aws_ec2 host's tags.Role variable.
   - key: tags.Role
     prefix: tag_Role_
     separator: ""
+
+# Workers are reached through the control-plane (see group_vars/aws_workers.yml)
+# so they must be addressed by their private IP, not their public DNS.
+compose:
+  ansible_host: >-
+    (tags.Role == 'control-plane') | ternary(public_dns_name, private_ip_address)

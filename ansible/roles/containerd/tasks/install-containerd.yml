@@ -7,8 +7,16 @@
     enabled: true
     gpgcheck: true
     gpgkey: https://download.docker.com/linux/centos/gpg
+  when: ansible_distribution != 'Amazon'
 
-- name: Install containerd
+- name: Install containerd (Amazon Linux native package)
+  ansible.builtin.dnf:
+    name: containerd
+    state: present
+  when: ansible_distribution == 'Amazon'
+
+- name: Install containerd (Docker CE containerd.io)
   ansible.builtin.dnf:
     name: containerd.io
     state: present
+  when: ansible_distribution != 'Amazon'

@@ -20,7 +20,7 @@ if [ -z "$INSTANCE_IDS" ]; then
   exit 0
 fi
 
-echo "Starting instances:\n$INSTANCE_IDS"
+printf "Starting instances:\n%s\n" "$INSTANCE_IDS"
 
 aws ec2 start-instances --instance-ids $INSTANCE_IDS
 

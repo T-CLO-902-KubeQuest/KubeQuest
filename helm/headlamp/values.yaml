@@ -1,0 +1,60 @@
+# Headlamp values used to render k8s/headlamp/headlamp.yaml.
+# Regenerate the manifest with:
+#   helm repo add headlamp https://kubernetes-sigs.github.io/headlamp/
+#   helm repo update headlamp
+#   helm template headlamp headlamp/headlamp \
+#     --version <CHART_VERSION> \
+#     --namespace headlamp \
+#     --values helm/headlamp/values.yaml \
+#     > k8s/headlamp/headlamp.yaml
+#
+# Pinned chart version: 0.43.0 (app version 0.43.0).
+#
+# Headlamp is the cluster dashboard (Issue #9). Unlike ingress-nginx it has no
+# special networking needs: it sits *behind* the ingress as a plain HTTP app,
+# so no hostNetwork and no control-plane pinning here.
+
+# Single replica: a dashboard has no HA requirement on this cluster.
+replicaCount: 1
+
+config:
+  # Headlamp talks to the API from inside the cluster (uses its own
+  # ServiceAccount to reach kube-apiserver). This is the in-cluster mode.
+  inCluster: true
+
+  # Do NOT let Headlamp auto-authenticate with its own ServiceAccount token.
+  # Kept false so the UI shows a login screen and each session runs with the
+  # permissions of the *token the user pastes in* — not a blanket pod identity.
+  unsafeUseServiceAccountToken: false
+
+# The chart creates a ServiceAccount for the pod and binds it to a ClusterRole.
+serviceAccount:
+  create: true
+clusterRoleBinding:
+  create: true
+  # Read-only by default (safe). The bound role governs the pod identity; with
+  # unsafeUseServiceAccountToken=false the *login token* is what actually drives
+  # what a user can do in the UI. Switch to "cluster-admin" if you want the
+  # dashboard itself to be able to mutate resources.
+  clusterRoleName: view
+
+# The Service is internal only; traffic reaches Headlamp through the Ingress
+# (see k8s/headlamp/ingress.yaml), so ClusterIP — never LoadBalancer/NodePort.
+service:
+  type: ClusterIP
+  port: 80
+
+# Ingress is declared as a standalone manifest (like Argo CD's, in
+# k8s/argocd/ingress.yaml) so TLS via cert-manager lives next to it and stays a
+# reviewable diff. Keep the chart's own Ingress off to avoid two sources.
+ingress:
+  enabled: false
+
+# Constrained cluster: cap the dashboard rather than let it burst.
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi

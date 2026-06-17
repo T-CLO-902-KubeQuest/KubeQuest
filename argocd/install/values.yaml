@@ -1,0 +1,50 @@
+# Argo CD values used to render install/argocd.yaml.
+# Regenerate the manifest with:
+#   helm repo add argo https://argoproj.github.io/argo-helm
+#   helm repo update argo
+#   helm template argocd argo/argo-cd \
+#     --version <ARGOCD_CHART_VERSION> \
+#     --namespace argocd \
+#     --values argocd/install/values.yaml \
+#     > argocd/install/argocd.yaml
+#
+# Minimal footprint: this cluster is resource-constrained, so every optional
+# component is disabled. Only the four core pieces stay up:
+#   application-controller, repo-server, server (API/UI) and redis.
+
+# Redis is NOT optional: the application-controller and repo-server use it as a
+# cache and crash-loop without it. We keep the bundled redis but as a single
+# lightweight pod (no HA), which is the smallest functional setup.
+redis:
+  enabled: true
+
+# SSO is provided by a cluster-wide external Dex shared across workloads, so the
+# bundled Dex is disabled to avoid running a second Dex. Wire Argo CD to the
+# external Dex later via oidc.config in argocd-cm (issuer = external Dex URL).
+dex:
+  enabled: false
+
+# Not needed: applications are declared by hand under argocd/apps, bootstrapped
+# by a single root app. No dynamic generators required. The chart has no
+# applicationSet.enabled toggle, so we scale the controller to zero replicas.
+applicationSet:
+  replicas: 0
+
+# No alerting wired up for this cluster.
+notifications:
+  enabled: false
+
+# Single controller/server/repo-server replica — no HA on a constrained cluster.
+controller:
+  replicas: 1
+
+repoServer:
+  replicas: 1
+
+# UI/API stays internal (ClusterIP). Reach it via `kubectl -n argocd
+# port-forward svc/argocd-server` for now; exposure (Tailscale ingress) is a
+# later decision and not baked into the vendored manifest.
+server:
+  replicas: 1
+  service:
+    type: ClusterIP

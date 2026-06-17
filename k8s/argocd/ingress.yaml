@@ -4,16 +4,18 @@
 # once; otherwise the server's own TLS plus the Ingress TLS double up and cause
 # redirect loops. See argocd/install/values.yaml (configs.params).
 #
-# Starts on the staging issuer to validate HTTP-01 end to end. Once a staging
-# cert is issued, switch the cert-manager.io/cluster-issuer annotation to
-# letsencrypt-prod and delete the staging secret to force a prod re-issue.
+# Uses the production Let's Encrypt issuer. The HTTP-01 chain was first
+# validated on letsencrypt-staging; the cluster CoreDNS resolves the host to the
+# control-plane Elastic IP (hosts block in the coredns ConfigMap) so the
+# cert-manager HTTP-01 self-check passes — the dns01 recursive-nameserver flags
+# do not affect the HTTP-01 self-check.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: argocd-server
   namespace: argocd
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-staging
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/backend-protocol: HTTP
 spec:
   ingressClassName: nginx

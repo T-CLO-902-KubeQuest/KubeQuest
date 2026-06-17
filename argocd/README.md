@@ -85,6 +85,6 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
 Log in as user `admin`. (A `kubectl -n argocd port-forward svc/argocd-server
 8080:80` still works for local access if the Ingress is down.)
 
-> The Ingress starts on the `letsencrypt-staging` issuer (untrusted cert, used
-> to validate HTTP-01). Switch the `cert-manager.io/cluster-issuer` annotation
-> to `letsencrypt-prod` once staging issues cleanly.
+> TLS is issued by the `letsencrypt-prod` ClusterIssuer (HTTP-01). The chain was
+> first validated on `letsencrypt-staging`. See `k8s/cert-manager/README.md` for
+> the CoreDNS `hosts` entry that lets the HTTP-01 self-check resolve internally.

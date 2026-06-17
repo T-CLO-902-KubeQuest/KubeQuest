@@ -17,13 +17,11 @@ crds:
   # Keep CRDs on uninstall — ArgoCD prune must not wipe issued certs/orders.
   keep: true
 
-# The HTTP-01 self-check resolves the challenge host through cert-manager's own
-# recursive resolver. Cluster CoreDNS does not know *.kubequest.epitech.beer
-# (the records are public-only), so the self-check fails with "no such host"
-# even though Let's Encrypt resolves it fine from outside. Point the resolver at
-# public nameservers so the self-check matches what Let's Encrypt sees.
-dns01RecursiveNameserversOnly: true
-dns01RecursiveNameservers: "8.8.8.8:53,1.1.1.1:53"
+# Note: the HTTP-01 self-check resolves the challenge host through the pod's
+# /etc/resolv.conf (cluster CoreDNS), NOT through the dns01 recursive-nameserver
+# flags — those only affect the DNS-01 self-check. CoreDNS is given a `hosts`
+# entry mapping argocd.kubequest.epitech.beer to the control-plane Elastic IP so
+# the self-check resolves internally. See k8s/argocd/ingress.yaml.
 
 # Constrained cluster: single replica per component, hard resource limits.
 # cert-manager also lands on the control-plane, the node we keep from OOMing.

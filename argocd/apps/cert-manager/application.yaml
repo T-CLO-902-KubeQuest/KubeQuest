@@ -1,0 +1,32 @@
+# cert-manager (controller + webhook + cainjector + CRDs), synced by the root
+# app-of-apps. Wave 0: must be healthy before any ClusterIssuer / annotated
+# Ingress is applied, otherwise the webhook rejects those resources.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/T-CLO-902-KubeQuest/KubeQuest.git
+    targetRevision: main
+    path: k8s/cert-manager
+    directory:
+      # Only the rendered install; issuers are a separate Application (wave 1).
+      include: "cert-manager.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # CRDs exceed the 262144-byte client-side apply annotation limit.
+      - ServerSideApply=true

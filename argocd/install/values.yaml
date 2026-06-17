@@ -41,10 +41,18 @@ controller:
 repoServer:
   replicas: 1
 
-# UI/API stays internal (ClusterIP). Reach it via `kubectl -n argocd
-# port-forward svc/argocd-server` for now; exposure (Tailscale ingress) is a
-# later decision and not baked into the vendored manifest.
+# UI/API stays internal (ClusterIP); external exposure is handled by an Ingress
+# (k8s/argocd/ingress.yaml) at argocd.kubequest.epitech.beer, with TLS issued by
+# cert-manager. The Service itself stays ClusterIP — the ingress-nginx
+# controller fronts it.
 server:
   replicas: 1
   service:
     type: ClusterIP
+
+# Run argocd-server in HTTP (insecure) mode: the Ingress terminates TLS once.
+# Without this, argocd-server's own TLS plus the Ingress TLS double up and cause
+# redirect loops / 502s. TLS to the outside is still enforced by the Ingress.
+configs:
+  params:
+    server.insecure: true

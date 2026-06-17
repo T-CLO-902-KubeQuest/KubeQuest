@@ -70,13 +70,21 @@ From then on Argo CD is self-managing: commit a new
 manual `kubectl apply`.
 
 ## Accessing the UI
-The server stays internal (`ClusterIP`). For now, port-forward:
+The server is exposed at **https://argocd.kubequest.epitech.beer** through the
+ingress-nginx controller, with TLS issued by cert-manager (see
+`k8s/argocd/ingress.yaml`). `argocd-server` runs in `--insecure` mode
+(`configs.params.server.insecure: true`) so the Ingress terminates TLS once —
+otherwise the server's own TLS plus the Ingress TLS double up and cause redirect
+loops.
 
+The initial admin password:
 ```sh
-kubectl -n argocd port-forward svc/argocd-server 8080:443
-# initial admin password:
 kubectl -n argocd get secret argocd-initial-admin-secret \
   -o jsonpath='{.data.password}' | base64 -d
 ```
-Then open https://localhost:8080 (user `admin`). External exposure (e.g. via the
-Tailscale ingress) is a later decision, deliberately not baked into the manifest.
+Log in as user `admin`. (A `kubectl -n argocd port-forward svc/argocd-server
+8080:80` still works for local access if the Ingress is down.)
+
+> The Ingress starts on the `letsencrypt-staging` issuer (untrusted cert, used
+> to validate HTTP-01). Switch the `cert-manager.io/cluster-issuer` annotation
+> to `letsencrypt-prod` once staging issues cleanly.

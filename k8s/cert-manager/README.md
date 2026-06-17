@@ -45,6 +45,28 @@ production rate limit, then switch the Ingress
 `cert-manager.io/cluster-issuer` annotation to `letsencrypt-prod` and delete the
 old secret to force a prod re-issue.
 
+### HTTP-01 self-check and CoreDNS
+Before reaching out to Let's Encrypt, cert-manager runs a **self-check** that
+fetches the challenge URL itself. This self-check resolves the host through the
+pod's `/etc/resolv.conf` — i.e. cluster **CoreDNS** — not through the
+`dns01-recursive-nameservers` flags (those only apply to the DNS-01 self-check).
+
+CoreDNS forwards unknown names to the node resolver, which does not resolve
+`argocd.kubequest.epitech.beer` internally, so the self-check failed with
+`no such host` while the public DNS resolved fine. Fix: a `hosts` block in the
+`coredns` ConfigMap (`kube-system`) maps the host to the control-plane Elastic
+IP:
+
+```
+hosts {
+   18.158.153.65 argocd.kubequest.epitech.beer
+   fallthrough
+}
+```
+Applied live (CoreDNS is managed by kubeadm, not GitOps) and reloaded with
+`kubectl -n kube-system rollout restart deploy/coredns`. Add a line per new host
+exposed under this domain.
+
 ## Deployment
 GitOps via three Applications under `argocd/apps`, ordered by sync-wave so the
 webhook is ready before any custom resource is admitted:

@@ -1,0 +1,49 @@
+# cert-manager values used to render k8s/cert-manager/cert-manager.yaml.
+# Regenerate the manifest with:
+#   helm repo add jetstack https://charts.jetstack.io
+#   helm repo update jetstack
+#   helm template cert-manager jetstack/cert-manager \
+#     --version <CHART_VERSION> \
+#     --namespace cert-manager \
+#     --values helm/cert-manager/values.yaml \
+#     > k8s/cert-manager/cert-manager.yaml
+#
+# Pinned chart version: v1.20.2.
+
+# Ship the CRDs inside the rendered manifest so the whole install is one
+# reviewable, GitOps-applied file (no separate `kubectl apply` of CRDs).
+crds:
+  enabled: true
+  # Keep CRDs on uninstall — ArgoCD prune must not wipe issued certs/orders.
+  keep: true
+
+# Constrained cluster: single replica per component, hard resource limits.
+# cert-manager also lands on the control-plane, the node we keep from OOMing.
+replicaCount: 1
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+webhook:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+cainjector:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

@@ -1,0 +1,38 @@
+# Let's Encrypt ClusterIssuers using the HTTP-01 solver via the ingress-nginx
+# controller. The DNS provider for epitech.beer does not support wildcards, so
+# DNS-01 brings no benefit — HTTP-01 per-host is the right fit.
+#
+# HTTP-01 requires Let's Encrypt to reach http://<host>/.well-known/acme-challenge/...
+# on port 80 of the Elastic IP (where ingress-nginx listens via hostNetwork).
+# Start on staging to validate the challenge chain without burning the strict
+# production rate limit, then switch the Ingress annotation to letsencrypt-prod.
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: gabriellopezfouche@gmail.com
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: gabriellopezfouche@gmail.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx

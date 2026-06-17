@@ -1,0 +1,27 @@
+# Ingress exposing the Argo CD UI at argocd.kubequest.epitech.beer, with a
+# cert-manager-issued TLS cert. Wave 2: needs the ClusterIssuer (wave 1) to
+# exist so the cert-manager.io annotation resolves.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-ingress
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/T-CLO-902-KubeQuest/KubeQuest.git
+    targetRevision: main
+    path: k8s/argocd
+    directory:
+      include: "ingress.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

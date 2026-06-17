@@ -1,0 +1,28 @@
+# Let's Encrypt ClusterIssuers (staging + prod). Wave 1: applied after
+# cert-manager (wave 0) is healthy so the webhook can admit the ClusterIssuer CRs.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager-issuers
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/T-CLO-902-KubeQuest/KubeQuest.git
+    targetRevision: main
+    path: k8s/cert-manager
+    directory:
+      include: "cluster-issuers.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    # ClusterIssuers are cluster-scoped; namespace is only the default for any
+    # namespaced fallbacks and is harmless here.
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

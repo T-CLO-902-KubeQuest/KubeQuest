@@ -227,6 +227,7 @@ data:
   repo.server: argocd-repo-server:8081
   reposerver.log.format: text
   reposerver.log.level: info
+  server.insecure: "true"
   server.log.format: text
   server.log.level: info
   server.repo.server.strict.tls: "false"
@@ -31489,7 +31490,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/cmd-params: 6c2b61608151484f2633aa8884a130895da432f8e682c07fafa43b94fa320629
+        checksum/cmd-params: 46ae07a669f0b6fdcf832bf9f8f79b477567031d153165aaaa4641850d4852a5
       labels:
         helm.sh/chart: argo-cd-9.5.21
         app.kubernetes.io/name: argocd-applicationset-controller
@@ -31783,7 +31784,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/cmd-params: 6c2b61608151484f2633aa8884a130895da432f8e682c07fafa43b94fa320629
+        checksum/cmd-params: 46ae07a669f0b6fdcf832bf9f8f79b477567031d153165aaaa4641850d4852a5
         checksum/cm: f1975cc0351b25d50d4277f96e3b11a4dfc1799e16af52b9e51bd8cd004e7e2c
       labels:
         helm.sh/chart: argo-cd-9.5.21
@@ -32210,7 +32211,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/cmd-params: 6c2b61608151484f2633aa8884a130895da432f8e682c07fafa43b94fa320629
+        checksum/cmd-params: 46ae07a669f0b6fdcf832bf9f8f79b477567031d153165aaaa4641850d4852a5
         checksum/cm: f1975cc0351b25d50d4277f96e3b11a4dfc1799e16af52b9e51bd8cd004e7e2c
       labels:
         helm.sh/chart: argo-cd-9.5.21
@@ -32762,7 +32763,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/cmd-params: 6c2b61608151484f2633aa8884a130895da432f8e682c07fafa43b94fa320629
+        checksum/cmd-params: 46ae07a669f0b6fdcf832bf9f8f79b477567031d153165aaaa4641850d4852a5
         checksum/cm: f1975cc0351b25d50d4277f96e3b11a4dfc1799e16af52b9e51bd8cd004e7e2c
       labels:
         helm.sh/chart: argo-cd-9.5.21

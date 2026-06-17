@@ -1,0 +1,33 @@
+# Root "app-of-apps". Applied manually once to bootstrap GitOps:
+#   kubectl apply -n argocd -f argocd/apps/root/application.yaml
+#
+# From then on Argo CD owns itself: this Application watches argocd/apps in the
+# repo and syncs every child Application declared there. Add a new workload by
+# committing argocd/apps/<name>/application.yaml — no further manual apply.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  # Keep the root app even if its parent sync prunes other resources.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/T-CLO-902-KubeQuest/KubeQuest.git
+    targetRevision: main
+    path: argocd/apps
+    directory:
+      recurse: true
+      # Don't let the root app re-render itself (would nest infinitely).
+      exclude: "root/*"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

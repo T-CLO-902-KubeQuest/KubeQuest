@@ -1,0 +1,62 @@
+# ingress-nginx values used to render k8s/ingress-nginx/ingress-nginx.yaml.
+# Regenerate the manifest with:
+#   helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+#   helm repo update ingress-nginx
+#   helm template ingress-nginx ingress-nginx/ingress-nginx \
+#     --version <CHART_VERSION> \
+#     --namespace ingress-nginx \
+#     --values helm/ingress-nginx/values.yaml \
+#     > k8s/ingress-nginx/ingress-nginx.yaml
+#
+# Pinned chart version: 4.15.1 (app version 1.15.1).
+
+controller:
+  # No cloud LoadBalancer on this cluster. The controller binds the host's
+  # :80/:443 directly via hostNetwork, on the only node with a fixed Elastic IP
+  # (the control-plane). This avoids a NodePort high port and a pending
+  # LoadBalancer service. dnsPolicy must follow hostNetwork so DNS resolves
+  # through the cluster, not the node's resolv.conf.
+  hostNetwork: true
+  dnsPolicy: ClusterFirstWithHostNet
+
+  # The Service is only an internal abstraction now (hostNetwork carries real
+  # traffic); ClusterIP keeps it from staying <pending> as a LoadBalancer.
+  service:
+    type: ClusterIP
+
+  # Single replica: hostNetwork means one controller per node and only the
+  # control-plane has the Elastic IP, so HA here would need a second fixed IP.
+  replicaCount: 1
+  kind: Deployment
+
+  # Pin the controller to the control-plane (the Elastic-IP node) and tolerate
+  # its NoSchedule taint so the pod is actually allowed there.
+  nodeSelector:
+    node-role.kubernetes.io/control-plane: ""
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+
+  # Hard resource limits: the control-plane is the node we must protect from
+  # OOM, so the controller is capped rather than left to burst.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+  # Default this controller as the cluster's IngressClass so Ingress objects
+  # without an explicit class still resolve here.
+  ingressClassResource:
+    default: true
+
+  # Constrained cluster: no metrics/admission stack beyond the essentials.
+  admissionWebhooks:
+    enabled: true
+
+# No autoscaling, no default backend pod — keep the footprint minimal.
+defaultBackend:
+  enabled: false

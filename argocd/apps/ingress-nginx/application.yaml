@@ -1,0 +1,31 @@
+# ingress-nginx controller, synced by the root app-of-apps.
+# Exposes cluster services on the control-plane's Elastic IP via hostNetwork
+# (no cloud LoadBalancer available). See ingress-nginx/README.md.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ingress-nginx
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/T-CLO-902-KubeQuest/KubeQuest.git
+    targetRevision: main
+    path: k8s/ingress-nginx
+    directory:
+      # Only apply the rendered manifest, not the source values.yaml.
+      include: "ingress-nginx.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ingress-nginx
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # Mirror the ArgoCD bootstrap: server-side apply avoids the 262144-byte
+      # last-applied-configuration annotation limit on large resources.
+      - ServerSideApply=true

@@ -1,0 +1,9 @@
+Application deployed successfully.
+
+Access the app at: http://{{ .Values.ingress.host }}
+(make sure your DNS or /etc/hosts points {{ .Values.ingress.host }} to the ingress node IP)
+
+To install with required secrets:
+  helm install sample-app ./helm/sample-app \
+    --set app.key="$(php artisan key:generate --show)" \
+    --set db.password="<your-db-password>"

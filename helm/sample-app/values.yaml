@@ -2,6 +2,8 @@ replicaCount: 2
 
 image:
   repository: ghcr.io/t-clo-902-kubequest/sample-app
+  # TODO: pin to a semver tag once the CI pipeline builds the image from
+  # conventional commits (semantic-release). "latest" is not reproducible.
   tag: "latest"
   pullPolicy: IfNotPresent
 

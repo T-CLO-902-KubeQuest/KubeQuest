@@ -2,3 +2,15 @@
 kubernetes_version: "1.33"
 kubernetes_package_version: "1.33.11"
 kubernetes_pod_subnet: "10.244.0.0/16"
+
+# OIDC for the kube-apiserver: validate bearer tokens issued by the cluster-wide
+# Dex (so Headlamp users authenticated through Dex can reach the API). The
+# client_id MUST equal the audience of the tokens Headlamp obtains (its OIDC
+# client id). Username/groups are prefixed to avoid clashing with built-in or
+# certificate identities.
+apiserver_oidc_issuer_url: "https://dex.kubequest.epitech.beer"
+apiserver_oidc_client_id: "headlamp"
+apiserver_oidc_username_claim: "email"
+apiserver_oidc_username_prefix: "oidc:"
+apiserver_oidc_groups_claim: "groups"
+apiserver_oidc_groups_prefix: "oidc:"

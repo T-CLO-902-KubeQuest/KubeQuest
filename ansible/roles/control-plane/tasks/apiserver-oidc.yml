@@ -1,0 +1,36 @@
+---
+# Wire the kube-apiserver to Dex as an OIDC token validator.
+#
+# kubeadm init (kubeadm-init.yml) does not take --oidc-* flags on its CLI and is
+# guarded to run only once, so the flags are injected here by patching the static
+# pod manifest. kubelet notices the file change and restarts the apiserver
+# automatically (~30-60s of API downtime). The task is idempotent: each flag is
+# only added if absent, and it reports "changed" only when it actually edits the
+# manifest, so re-running the playbook on a live cluster is safe.
+- name: Ensure kube-apiserver OIDC flags are present
+  ansible.builtin.lineinfile:
+    path: /etc/kubernetes/manifests/kube-apiserver.yaml
+    # Insert each flag right after the `- kube-apiserver` command entry so it
+    # lands inside the container's command list with the correct indentation.
+    insertafter: '^\s*- kube-apiserver$'
+    line: "    - {{ item }}"
+    state: present
+  loop:
+    - "--oidc-issuer-url={{ apiserver_oidc_issuer_url }}"
+    - "--oidc-client-id={{ apiserver_oidc_client_id }}"
+    - "--oidc-username-claim={{ apiserver_oidc_username_claim }}"
+    - "--oidc-username-prefix={{ apiserver_oidc_username_prefix }}"
+    - "--oidc-groups-claim={{ apiserver_oidc_groups_claim }}"
+    - "--oidc-groups-prefix={{ apiserver_oidc_groups_prefix }}"
+  register: apiserver_oidc_patch
+
+- name: Wait for the kube-apiserver to become healthy again after the restart
+  ansible.builtin.uri:
+    url: "https://{{ ansible_default_ipv4.address }}:6443/healthz"
+    validate_certs: false
+    return_content: true
+  register: apiserver_healthz
+  until: apiserver_healthz.status == 200 and apiserver_healthz.content == 'ok'
+  retries: 30
+  delay: 5
+  when: apiserver_oidc_patch is changed

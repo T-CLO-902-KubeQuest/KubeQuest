@@ -28,8 +28,8 @@ components: `application-controller`, `repo-server`, `server` (API/UI) and
 `redis`. Disabled extras:
 
 - **Dex**: a cluster-wide external Dex is shared across workloads, so the bundled
-  Dex would be a second, redundant one. Wire SSO later via `oidc.config` in
-  `argocd-cm` (issuer = external Dex URL).
+  Dex would be a second, redundant one. SSO is wired to that external Dex via
+  `configs.cm.oidc.config` in `argocd/install/values.yaml` (see "SSO" below).
 - **ApplicationSet**: applications are declared by hand under `apps/`, so the
   controller is scaled to 0 replicas (the chart has no `enabled` toggle for it).
 - **Notifications**: no alerting wired up.
@@ -88,3 +88,21 @@ Log in as user `admin`. (A `kubectl -n argocd port-forward svc/argocd-server
 > TLS is issued by the `letsencrypt-prod` ClusterIssuer (HTTP-01). The chain was
 > first validated on `letsencrypt-staging`. See `k8s/cert-manager/README.md` for
 > the CoreDNS `hosts` entry that lets the HTTP-01 self-check resolve internally.
+
+## SSO (Dex / GitHub)
+Argo CD delegates login to the cluster-wide external Dex
+(`configs.cm.oidc.config` in `install/values.yaml`): users authenticate with
+GitHub through Dex, which only admits members of the `T-CLO-902-KubeQuest` org.
+
+The OIDC client secret is **not** in Git. It lives under the key
+`dex.argocd-client-secret` in the `argocd-secret` Secret and must equal the
+`argocd` value of the `dex-clients` Secret on the Dex side. Set it by hand:
+```sh
+kubectl -n argocd patch secret argocd-secret \
+  -p "{\"stringData\":{\"dex.argocd-client-secret\":\"<secret>\"}}"
+```
+
+RBAC: SSO users get `role:readonly` by default (`configs.rbac.policy.default`).
+**Admin is not granted through SSO** — use the local `admin` account for
+privileged actions. Promote specific GitHub teams later by adding
+`policy.csv` lines (e.g. `g, T-CLO-902-KubeQuest:maintainers, role:admin`).

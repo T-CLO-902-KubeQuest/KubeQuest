@@ -56,3 +56,27 @@ server:
 configs:
   params:
     server.insecure: true
+
+  # argocd-cm: public URL + SSO via the cluster-wide external Dex.
+  cm:
+    # Must be the real external URL (the chart default is argocd.example.com).
+    # OIDC redirect URIs are derived from it, so a wrong value breaks login.
+    url: https://argocd.kubequest.epitech.beer
+    # Delegate login to Dex (issuer = external Dex URL). The client secret is not
+    # inlined: $dex.argocd-client-secret resolves to key "dex.argocd-client-secret"
+    # in the argocd-secret Secret, created by hand (kept out of Git).
+    oidc.config: |
+      name: Dex
+      issuer: https://dex.kubequest.epitech.beer
+      clientID: argocd
+      clientSecret: $dex.argocd-client-secret
+      requestedScopes:
+        - openid
+        - profile
+        - email
+        - groups
+
+  # argocd-rbac-cm: SSO users are read-only by default. Admin stays the local
+  # "admin" account (not granted through SSO).
+  rbac:
+    policy.default: role:readonly

@@ -12,15 +12,6 @@ metadata:
     app.kubernetes.io/version: "0.43.0"
     app.kubernetes.io/managed-by: Helm
 ---
-# Source: headlamp/templates/secret.yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: oidc
-  namespace: headlamp
-type: Opaque
-data:
----
 # Source: headlamp/templates/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -108,12 +99,40 @@ spec:
           imagePullPolicy: IfNotPresent
           
           env:
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: headlamp-oidc
+                  key: clientID
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: headlamp-oidc
+                  key: clientSecret
+            - name: OIDC_ISSUER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: headlamp-oidc
+                  key: issuerURL
+            - name: OIDC_SCOPES
+              valueFrom:
+                secretKeyRef:
+                  name: headlamp-oidc
+                  key: scopes
           args:
             - "-in-cluster"
             - "-in-cluster-context-name=main"
             - "-plugins-dir=/headlamp/plugins"
             - "-session-ttl=86400"
             # Check if externalSecret is disabled
+            # Check if clientID is non empty either from env or oidc.config
+            - "-oidc-client-id=$(OIDC_CLIENT_ID)"
+            # Check if clientSecret is non empty either from env or oidc.config
+            - "-oidc-client-secret=$(OIDC_CLIENT_SECRET)"
+            # Check if issuerURL is non empty either from env or oidc.config
+            - "-oidc-idp-issuer-url=$(OIDC_ISSUER_URL)"
+            # Check if scopes are non empty either from env or oidc.config
+            - "-oidc-scopes=$(OIDC_SCOPES)"
           ports:
             - name: http
               containerPort: 4466

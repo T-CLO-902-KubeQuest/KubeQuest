@@ -98,6 +98,16 @@ data:
   application.instanceLabelKey: argocd.argoproj.io/instance
   application.sync.impersonation.enabled: "false"
   exec.enabled: "false"
+  oidc.config: |
+    name: Dex
+    issuer: https://dex.kubequest.epitech.beer
+    clientID: argocd
+    clientSecret: $dex.argocd-client-secret
+    requestedScopes:
+      - openid
+      - profile
+      - email
+      - groups
   resource.customizations.ignoreResourceUpdates.ConfigMap: |
     jqPathExpressions:
       # Ignore the cluster-autoscaler status
@@ -195,7 +205,7 @@ data:
   timeout.hard.reconciliation: 0s
   timeout.reconciliation: 120s
   timeout.reconciliation.jitter: 60s
-  url: https://argocd.example.com
+  url: https://argocd.kubequest.epitech.beer
 ---
 # Source: argo-cd/templates/argocd-configs/argocd-cmd-params-cm.yaml
 apiVersion: v1
@@ -262,7 +272,7 @@ metadata:
     app.kubernetes.io/version: "v3.4.3"
 data:
   policy.csv: ""
-  policy.default: ""
+  policy.default: role:readonly
   policy.matchMode: glob
   scopes: '[groups]'
 ---
@@ -31785,7 +31795,7 @@ spec:
     metadata:
       annotations:
         checksum/cmd-params: 46ae07a669f0b6fdcf832bf9f8f79b477567031d153165aaaa4641850d4852a5
-        checksum/cm: f1975cc0351b25d50d4277f96e3b11a4dfc1799e16af52b9e51bd8cd004e7e2c
+        checksum/cm: f14ce36d75af1e55b223a653d0665290c8f448b455979c07b78956352e7630a9
       labels:
         helm.sh/chart: argo-cd-9.5.21
         app.kubernetes.io/name: argocd-repo-server
@@ -32212,7 +32222,7 @@ spec:
     metadata:
       annotations:
         checksum/cmd-params: 46ae07a669f0b6fdcf832bf9f8f79b477567031d153165aaaa4641850d4852a5
-        checksum/cm: f1975cc0351b25d50d4277f96e3b11a4dfc1799e16af52b9e51bd8cd004e7e2c
+        checksum/cm: f14ce36d75af1e55b223a653d0665290c8f448b455979c07b78956352e7630a9
       labels:
         helm.sh/chart: argo-cd-9.5.21
         app.kubernetes.io/name: argocd-server
@@ -32764,7 +32774,7 @@ spec:
     metadata:
       annotations:
         checksum/cmd-params: 46ae07a669f0b6fdcf832bf9f8f79b477567031d153165aaaa4641850d4852a5
-        checksum/cm: f1975cc0351b25d50d4277f96e3b11a4dfc1799e16af52b9e51bd8cd004e7e2c
+        checksum/cm: f14ce36d75af1e55b223a653d0665290c8f448b455979c07b78956352e7630a9
       labels:
         helm.sh/chart: argo-cd-9.5.21
         app.kubernetes.io/name: argocd-application-controller

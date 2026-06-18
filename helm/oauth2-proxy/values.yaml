@@ -50,6 +50,11 @@ config:
 extraArgs:
   provider: oidc
   oidc-issuer-url: https://dex.kubequest.epitech.beer
+  # PKCE (RFC 7636) binds the auth code to a per-session secret that never leaves
+  # the proxy, so a stolen code can't be replayed even if the client secret leaks.
+  # Dex advertises S256 support; defence-in-depth on top of the confidential
+  # client secret.
+  code-challenge-method: S256
   # The callback Dex redirects back to — must exactly match the staticClient's
   # redirectURI in helm/dex/values.yaml.
   redirect-url: https://auth.kubequest.epitech.beer/oauth2/callback

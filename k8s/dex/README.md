@@ -4,8 +4,9 @@
 [Dex](https://dexidp.io/) is the cluster's application-level OIDC provider
 (Issue #10). Cluster services — Headlamp, Grafana, Argo CD, ... — delegate their
 login to Dex, which in turn **federates GitHub** as the upstream identity
-provider. The Kubernetes API server is **not** wired to Dex here; this is SSO for
-the dashboards/apps, not for `kubectl`.
+provider. The Kubernetes API server is also wired to Dex as an OIDC token
+validator (see `k8s/oidc-rbac/` and the `control-plane` Ansible role), so tokens
+minted via Dex are accepted by the API too — bound read-only to the GitHub org.
 
 This is the single, cluster-wide Dex the Argo CD install intentionally leaves
 out of its own bundle (see `argocd/README.md` → "Minimal footprint"). Wire Argo

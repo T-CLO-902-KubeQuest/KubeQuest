@@ -3,16 +3,16 @@
 # Dex serves plain HTTP on its Service (port 5556), so no backend-protocol
 # annotation is needed — HTTP is ingress-nginx's default.
 #
-# Starts on the staging issuer to validate HTTP-01 end to end. Once a staging
-# cert is issued, switch the cert-manager.io/cluster-issuer annotation to
-# letsencrypt-prod and delete the staging secret to force a prod re-issue.
+# TLS is issued by the letsencrypt-prod ClusterIssuer (HTTP-01). The chain was
+# first validated on letsencrypt-staging; see k8s/cert-manager/README.md for the
+# CoreDNS hosts entry that lets the HTTP-01 self-check resolve internally.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: dex
   namespace: dex
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-staging
+    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   ingressClassName: nginx
   tls:

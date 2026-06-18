@@ -34,8 +34,9 @@ command above, then commit the regenerated manifest with the values change.
 The `Service` stays `ClusterIP` (port 5556, plain HTTP); real traffic reaches Dex
 through a standalone `Ingress` (`k8s/dex/ingress.yaml`) on the `nginx`
 IngressClass, with TLS issued by cert-manager. As with Argo CD and Headlamp, the
-Ingress starts on the `letsencrypt-staging` issuer to validate HTTP-01 end to
-end, then switches to `letsencrypt-prod` once a staging cert is issued.
+Ingress runs on the `letsencrypt-prod` issuer; the chain was first validated on
+`letsencrypt-staging` before switching. The HTTP-01 self-check needs a CoreDNS
+`hosts` entry for this host — see `k8s/cert-manager/README.md`.
 
 Target host: **https://dex.kubequest.epitech.beer** — this MUST match
 `config.issuer` in the values and every client's configured issuer URL.

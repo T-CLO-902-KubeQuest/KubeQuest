@@ -56,34 +56,45 @@ config:
         clientID: $GITHUB_CLIENT_ID
         clientSecret: $GITHUB_CLIENT_SECRET
         redirectURI: https://dex.kubequest.epitech.beer/callback
-        # Restrict and map GitHub orgs/teams to OIDC groups.
-        # orgs:
-        #   - name: my-github-org
+        # Only members of this GitHub org may log in; their teams become OIDC
+        # groups (surfaced to clients that request the "groups" scope, e.g. for
+        # Argo CD RBAC).
+        orgs:
+          - name: T-CLO-902-KubeQuest
 
   # Services allowed to use Dex as their OIDC provider. One entry per app.
-  # Each client secret must match what the app is configured with; keep real
-  # secrets out of this file (use a sealed secret / external secret if needed).
+  # Each client secret is pulled from an env var (secretEnv, dex >= 2.35.0) so it
+  # never lands in this file or the rendered manifest. The env vars are fed by a
+  # hand-created Secret (see envVars below); keep the real values out of Git.
   staticClients:
     - id: grafana
       name: Grafana
-      secret: CHANGE_ME_grafana
+      secretEnv: GRAFANA_CLIENT_SECRET
       redirectURIs:
         - https://grafana.kubequest.epitech.beer/login/generic_oauth
     - id: argocd
       name: ArgoCD
-      secret: CHANGE_ME_argocd
+      secretEnv: ARGOCD_CLIENT_SECRET
       redirectURIs:
         - https://argocd.kubequest.epitech.beer/auth/callback
     - id: headlamp
       name: Headlamp
-      secret: CHANGE_ME_headlamp
+      secretEnv: HEADLAMP_CLIENT_SECRET
       redirectURIs:
         - https://headlamp.kubequest.epitech.beer/oidc-callback
 
-# GitHub OAuth app credentials, sourced from a pre-created Kubernetes Secret.
-# Create it once (do NOT commit the values):
+# Secrets injected into the Dex pod, all sourced from hand-created Kubernetes
+# Secrets (never committed):
+#
+#   # GitHub OAuth app (the upstream connector):
 #   kubectl -n dex create secret generic dex-github \
 #     --from-literal=clientID=<id> --from-literal=clientSecret=<secret>
+#
+#   # One shared secret per OIDC client (must match each app's config):
+#   kubectl -n dex create secret generic dex-clients \
+#     --from-literal=argocd=<secret> \
+#     --from-literal=headlamp=<secret> \
+#     --from-literal=grafana=<secret>
 envVars:
   - name: GITHUB_CLIENT_ID
     valueFrom:
@@ -95,6 +106,21 @@ envVars:
       secretKeyRef:
         name: dex-github
         key: clientSecret
+  - name: ARGOCD_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: dex-clients
+        key: argocd
+  - name: HEADLAMP_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: dex-clients
+        key: headlamp
+  - name: GRAFANA_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: dex-clients
+        key: grafana
 
 # Internal only; traffic reaches Dex through the standalone Ingress
 # (k8s/dex/ingress.yaml), so ClusterIP — never LoadBalancer/NodePort.

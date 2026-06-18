@@ -27,6 +27,30 @@ config:
   # permissions of the *token the user pastes in* — not a blanket pod identity.
   unsafeUseServiceAccountToken: false
 
+  # OIDC login via the cluster-wide external Dex (which federates GitHub and only
+  # admits the T-CLO-902-KubeQuest org).
+  #
+  # This chart (0.43.0) only wires OIDC env vars via secretKeyRef when
+  # secret.create=true — but that also makes it render a Secret from the values
+  # below (clientSecret would land in Git). So we keep secret.create=true to get
+  # the secretKeyRef wiring, set clientSecret to a placeholder, and STRIP the
+  # generated Secret from the rendered manifest (see k8s/headlamp/README.md).
+  # The real Secret is created by hand and is the single source of truth:
+  #   kubectl -n headlamp create secret generic headlamp-oidc \
+  #     --from-literal=clientID=headlamp \
+  #     --from-literal=clientSecret=<secret> \
+  #     --from-literal=issuerURL=https://dex.kubequest.epitech.beer \
+  #     --from-literal=scopes="openid profile email groups"
+  # clientSecret must match the "headlamp" value of the dex-clients Secret.
+  oidc:
+    secret:
+      create: true
+      name: headlamp-oidc
+    clientID: headlamp
+    clientSecret: PLACEHOLDER_STRIPPED_FROM_MANIFEST
+    issuerURL: https://dex.kubequest.epitech.beer
+    scopes: "openid profile email groups"
+
 # The chart creates a ServiceAccount for the pod and binds it to a ClusterRole.
 serviceAccount:
   create: true

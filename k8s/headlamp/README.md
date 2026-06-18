@@ -58,6 +58,31 @@ The session's effective permissions are the intersection of that token's RBAC
 and the dashboard's reachability — a token from a more privileged ServiceAccount
 grants more in the UI.
 
+## OIDC login (Dex / GitHub)
+Headlamp also offers OIDC login via the cluster-wide external Dex, which
+federates GitHub and only admits the `T-CLO-902-KubeQuest` org. The pod reads
+its OIDC config from env vars wired to a `headlamp-oidc` Secret
+(`OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_ISSUER_URL`, `OIDC_SCOPES`).
+
+That Secret is **created by hand and kept out of Git** — it is the single source
+of truth:
+```sh
+kubectl -n headlamp create secret generic headlamp-oidc \
+  --from-literal=clientID=headlamp \
+  --from-literal=clientSecret=<secret> \
+  --from-literal=issuerURL=https://dex.kubequest.epitech.beer \
+  --from-literal=scopes="openid profile email groups"
+```
+`clientSecret` must equal the `headlamp` value of the `dex-clients` Secret on the
+Dex side.
+
+> Regeneration caveat: this chart (0.43.0) only wires the OIDC env vars via
+> `secretKeyRef` when `config.oidc.secret.create=true`, but that also makes it
+> render a `Secret` from the values (a placeholder `clientSecret`). After
+> `helm template`, **strip that generated `Secret` document** from
+> `k8s/headlamp/headlamp.yaml` so no secret material lands in Git — the
+> Deployment keeps its `secretKeyRef`s to the hand-created `headlamp-oidc`.
+
 ## Deployment
 Managed by GitOps: the `Application` at `argocd/apps/headlamp/application.yaml`
 is picked up by the root app-of-apps and synced automatically. No manual

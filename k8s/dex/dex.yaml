@@ -26,7 +26,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
 type: Opaque
 data:
-  config.yaml: "Y29ubmVjdG9yczoKLSBjb25maWc6CiAgICBjbGllbnRJRDogJEdJVEhVQl9DTElFTlRfSUQKICAgIGNsaWVudFNlY3JldDogJEdJVEhVQl9DTElFTlRfU0VDUkVUCiAgICByZWRpcmVjdFVSSTogaHR0cHM6Ly9kZXgua3ViZXF1ZXN0LmVwaXRlY2guYmVlci9jYWxsYmFjawogIGlkOiBnaXRodWIKICBuYW1lOiBHaXRIdWIKICB0eXBlOiBnaXRodWIKaXNzdWVyOiBodHRwczovL2RleC5rdWJlcXVlc3QuZXBpdGVjaC5iZWVyCm9hdXRoMjoKICBza2lwQXBwcm92YWxTY3JlZW46IHRydWUKc3RhdGljQ2xpZW50czoKLSBpZDogZ3JhZmFuYQogIG5hbWU6IEdyYWZhbmEKICByZWRpcmVjdFVSSXM6CiAgLSBodHRwczovL2dyYWZhbmEua3ViZXF1ZXN0LmVwaXRlY2guYmVlci9sb2dpbi9nZW5lcmljX29hdXRoCiAgc2VjcmV0OiBDSEFOR0VfTUVfZ3JhZmFuYQotIGlkOiBhcmdvY2QKICBuYW1lOiBBcmdvQ0QKICByZWRpcmVjdFVSSXM6CiAgLSBodHRwczovL2FyZ29jZC5rdWJlcXVlc3QuZXBpdGVjaC5iZWVyL2F1dGgvY2FsbGJhY2sKICBzZWNyZXQ6IENIQU5HRV9NRV9hcmdvY2QKLSBpZDogaGVhZGxhbXAKICBuYW1lOiBIZWFkbGFtcAogIHJlZGlyZWN0VVJJczoKICAtIGh0dHBzOi8vaGVhZGxhbXAua3ViZXF1ZXN0LmVwaXRlY2guYmVlci9vaWRjLWNhbGxiYWNrCiAgc2VjcmV0OiBDSEFOR0VfTUVfaGVhZGxhbXAKc3RvcmFnZToKICBjb25maWc6CiAgICBpbkNsdXN0ZXI6IHRydWUKICB0eXBlOiBrdWJlcm5ldGVzCndlYjoKICBodHRwOiAwLjAuMC4wOjU1NTY="
+  config.yaml: "Y29ubmVjdG9yczoKLSBjb25maWc6CiAgICBjbGllbnRJRDogJEdJVEhVQl9DTElFTlRfSUQKICAgIGNsaWVudFNlY3JldDogJEdJVEhVQl9DTElFTlRfU0VDUkVUCiAgICBvcmdzOgogICAgLSBuYW1lOiBULUNMTy05MDItS3ViZVF1ZXN0CiAgICByZWRpcmVjdFVSSTogaHR0cHM6Ly9kZXgua3ViZXF1ZXN0LmVwaXRlY2guYmVlci9jYWxsYmFjawogIGlkOiBnaXRodWIKICBuYW1lOiBHaXRIdWIKICB0eXBlOiBnaXRodWIKaXNzdWVyOiBodHRwczovL2RleC5rdWJlcXVlc3QuZXBpdGVjaC5iZWVyCm9hdXRoMjoKICBza2lwQXBwcm92YWxTY3JlZW46IHRydWUKc3RhdGljQ2xpZW50czoKLSBpZDogZ3JhZmFuYQogIG5hbWU6IEdyYWZhbmEKICByZWRpcmVjdFVSSXM6CiAgLSBodHRwczovL2dyYWZhbmEua3ViZXF1ZXN0LmVwaXRlY2guYmVlci9sb2dpbi9nZW5lcmljX29hdXRoCiAgc2VjcmV0RW52OiBHUkFGQU5BX0NMSUVOVF9TRUNSRVQKLSBpZDogYXJnb2NkCiAgbmFtZTogQXJnb0NECiAgcmVkaXJlY3RVUklzOgogIC0gaHR0cHM6Ly9hcmdvY2Qua3ViZXF1ZXN0LmVwaXRlY2guYmVlci9hdXRoL2NhbGxiYWNrCiAgc2VjcmV0RW52OiBBUkdPQ0RfQ0xJRU5UX1NFQ1JFVAotIGlkOiBoZWFkbGFtcAogIG5hbWU6IEhlYWRsYW1wCiAgcmVkaXJlY3RVUklzOgogIC0gaHR0cHM6Ly9oZWFkbGFtcC5rdWJlcXVlc3QuZXBpdGVjaC5iZWVyL29pZGMtY2FsbGJhY2sKICBzZWNyZXRFbnY6IEhFQURMQU1QX0NMSUVOVF9TRUNSRVQKc3RvcmFnZToKICBjb25maWc6CiAgICBpbkNsdXN0ZXI6IHRydWUKICB0eXBlOiBrdWJlcm5ldGVzCndlYjoKICBodHRwOiAwLjAuMC4wOjU1NTY="
 ---
 # Source: dex/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -156,7 +156,7 @@ spec:
     metadata:
       annotations:
       
-        checksum/config: bbf21ca2305d2cde693014a24807be9f89caedb55d96cbe1128cfee1a373e4e8
+        checksum/config: c8abc20e29257d1746b973923d5cbe0024f173aa8fba560493fc469d7e07d644
       labels:
         app.kubernetes.io/name: dex
         app.kubernetes.io/instance: dex
@@ -189,6 +189,21 @@ spec:
                 secretKeyRef:
                   key: clientSecret
                   name: dex-github
+            - name: ARGOCD_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: argocd
+                  name: dex-clients
+            - name: HEADLAMP_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: headlamp
+                  name: dex-clients
+            - name: GRAFANA_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: grafana
+                  name: dex-clients
           ports:
             - name: http
               containerPort: 5556

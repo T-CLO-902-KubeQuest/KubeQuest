@@ -52,12 +52,24 @@ kubectl -n dex create secret generic dex-github \
 The OAuth App's *Authorization callback URL* must be
 `https://dex.kubequest.epitech.beer/callback`.
 
+Login is restricted to members of the **`T-CLO-902-KubeQuest`** GitHub org
+(`connectors[].config.orgs` in the values); their teams are surfaced as OIDC
+groups to clients that request the `groups` scope.
+
 ## Clients
 Each service that logs in through Dex is declared as a `staticClient` in
-`helm/dex/values.yaml` (Grafana, Argo CD, Headlamp). The placeholder
-`CHANGE_ME_*` secrets are committed only as a shape; replace them with real
-shared secrets (sealed/external secret) that match each app's configuration. A
-client's `redirectURIs` must exactly match what the app sends.
+`helm/dex/values.yaml` (Grafana, Argo CD, Headlamp). Client secrets are **not**
+in Git: each entry uses `secretEnv` (dex >= 2.35.0) to read its secret from an
+env var, fed by a hand-created `dex-clients` Secret:
+```sh
+kubectl -n dex create secret generic dex-clients \
+  --from-literal=argocd=<secret> \
+  --from-literal=headlamp=<secret> \
+  --from-literal=grafana=<secret>
+```
+Each value must match the client secret configured in the corresponding app
+(e.g. `argocd` here == the OIDC client secret in `argocd-secret`). A client's
+`redirectURIs` must exactly match what the app sends.
 
 ## Deployment
 Managed by GitOps: the `Application` at `argocd/apps/dex/application.yaml` is

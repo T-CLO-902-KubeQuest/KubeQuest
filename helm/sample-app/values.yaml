@@ -1,0 +1,57 @@
+replicaCount: 2
+
+image:
+  # Path published by .github/workflows/sample-app-build.yml
+  # (${{ github.repository }}/sample-app, lowercased by GHCR).
+  repository: ghcr.io/t-clo-902-kubequest/kubequest/sample-app
+  # Empty by default: the chart falls back to Chart.appVersion, which the CI
+  # pipeline publishes as a semver tag. Override per-release with --set if needed.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  host: app.kubequest.local
+  path: /
+  pathType: Prefix
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+app:
+  env: production
+  debug: "false"
+  # APP_KEY must be provided at install time, never committed
+  key: ""
+
+db:
+  host: mysql
+  port: 3306
+  database: app_database
+  username: app_user
+  # password provided via --set db.password or external Secret
+  password: ""
+
+nodeSelector: {}
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: sample-app
+          topologyKey: kubernetes.io/hostname
+
+tolerations: []

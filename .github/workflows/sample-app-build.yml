@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "sample-app/**"
+      - "helm/sample-app/**"
   workflow_dispatch:
 
 permissions:
@@ -14,6 +15,7 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/sample-app
+  CHART_PATH: ./helm/sample-app
 
 jobs:
   build-scan-publish:
@@ -93,3 +95,33 @@ jobs:
           release_branches: main
           custom_tag: ${{ steps.semver.outputs.new_version }}
           tag_prefix: v
+
+      # --- Helm chart release (same semver as the image just published) ---
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Package and push Helm chart to GHCR
+        env:
+          VERSION: ${{ steps.semver.outputs.new_version }}
+        run: |
+          set -euo pipefail
+          # GHCR requires a lowercase repository path.
+          OWNER_LC="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          REPO_LC="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          CHART_REF="oci://ghcr.io/${REPO_LC}/charts"
+
+          # Reuse the GITHUB_TOKEN session for the OCI registry.
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            helm registry login ghcr.io --username '${{ github.actor }}' --password-stdin
+
+          # Chart version and app version both track the image semver, so an
+          # installed chart always references an image tag that exists.
+          helm package "${{ env.CHART_PATH }}" \
+            --version "${VERSION}" \
+            --app-version "${VERSION}" \
+            --destination ./dist
+
+          helm push "./dist/sample-app-${VERSION}.tgz" "${CHART_REF}"
+
+          echo "Published chart ${CHART_REF}/sample-app:${VERSION} (appVersion ${VERSION})"

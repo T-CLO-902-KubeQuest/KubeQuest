@@ -14,7 +14,7 @@ spec:
     targetRevision: main
     path: k8s/mysql
     directory:
-      include: "mysql.yaml"
+      include: "{mysql.yaml,backup.yaml}"
   destination:
     server: https://kubernetes.default.svc
     namespace: mysql

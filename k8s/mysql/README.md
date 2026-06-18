@@ -84,5 +84,36 @@ Connection from inside the cluster: host `mysql.mysql.svc.cluster.local`, port
 `3306`.
 
 ## Backup / restore
-> **TODO** — strategy to be implemented (Issue #17 acceptance criterion). Will
-> document a tested backup and restore procedure here.
+Logical backups via `mysqldump` (`k8s/mysql/backup.yaml`). A `VolumeSnapshot`
+approach is not available: `local-path` has no CSI snapshot capability.
+
+### Backup (automated)
+A `CronJob` (`mysql-backup`, daily at 02:00) runs `mysqldump --single-transaction`
+against the `laravel` database and writes a timestamped `.sql` dump to a dedicated
+`mysql-backups` PVC mounted at `/backups`. The root password is read from the
+`mysql-credentials` Secret — never hard-coded. A second `CronJob`
+(`mysql-backup-cleanup`, daily at 03:00) prunes dumps older than 7 days.
+
+Trigger an on-demand backup without waiting for the schedule:
+```sh
+kubectl create job --from=cronjob/mysql-backup mysql-backup-manual -n mysql
+```
+
+### Restore
+Replay the latest dump into the database with a one-off pod that mounts the
+backup PVC and pulls the root password from the Secret:
+```sh
+kubectl run -n mysql mysql-restore --rm -it --restart=Never \
+  --image=docker.io/bitnamilegacy/mysql:8.0.37-debian-12-r2 \
+  --overrides='{"apiVersion":"v1","spec":{"containers":[{"name":"c","image":"docker.io/bitnamilegacy/mysql:8.0.37-debian-12-r2","command":["/bin/sh","-c"],"args":["mysql -h mysql -u root -p\"$MYSQL_ROOT_PASSWORD\" laravel < $(ls -t /backups/*.sql | head -1)"],"env":[{"name":"MYSQL_ROOT_PASSWORD","valueFrom":{"secretKeyRef":{"name":"mysql-credentials","key":"mysql-root-password"}}}],"volumeMounts":[{"name":"v","mountPath":"/backups"}]}],"volumes":[{"name":"v","persistentVolumeClaim":{"claimName":"mysql-backups"}}]}}'
+```
+To restore a specific dump instead of the latest, replace the `$(ls -t ...)`
+expression with the explicit `/backups/laravel-<date>.sql` path.
+
+> Tested: insert a row → run the backup CronJob → drop the table → restore →
+> the row is back. Verified on the `kubequest-aws` cluster.
+
+> Production note: dumps live on a `local-path` PVC, i.e. the node's local disk —
+> if the node is lost, both data and backups are lost. The robust evolution is to
+> push dumps off-cluster (e.g. an S3 bucket), which requires AWS credentials in a
+> Secret.

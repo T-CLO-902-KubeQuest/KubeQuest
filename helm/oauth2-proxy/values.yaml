@@ -1,0 +1,101 @@
+# oauth2-proxy values used to render k8s/oauth2-proxy/oauth2-proxy.yaml.
+# Chart repo: https://oauth2-proxy.github.io/manifests  (chart: oauth2-proxy/oauth2-proxy)
+# Regenerate the manifest with:
+#   helm repo add oauth2-proxy https://oauth2-proxy.github.io/manifests
+#   helm repo update oauth2-proxy
+#   helm template oauth2-proxy oauth2-proxy/oauth2-proxy \
+#     --version <CHART_VERSION> \
+#     --namespace oauth2-proxy \
+#     --values helm/oauth2-proxy/values.yaml \
+#     > k8s/oauth2-proxy/oauth2-proxy.yaml
+#
+# Pinned chart version: 10.7.0 (app version 7.15.3).
+#
+# oauth2-proxy is the cluster's shared authentication layer (Issue #11). It sits
+# in front of tools that have no auth of their own (Prometheus, Alertmanager) or
+# whose auth we'd rather not expose (Grafana). Those tools' Ingresses delegate
+# auth to it via nginx's auth_request (forward-auth): unauthenticated requests
+# are bounced to Dex (which federates GitHub, org-restricted), and only return to
+# the tool once a session cookie is present. One proxy, many tools — each opted in
+# by annotations on its own Ingress (see k8s/oauth2-proxy/README.md).
+#
+# Nothing sits behind it yet: this ticket ships the auth layer ready to use; the
+# first protected tool (Prometheus/Grafana) wires itself in later.
+#
+# Only values that diverge from the chart defaults are set below.
+
+# Single replica: no HA requirement on this cluster.
+replicaCount: 1
+
+# Talk OIDC to the cluster-wide Dex. The proxy is a Dex staticClient (id
+# "oauth2-proxy", declared in helm/dex/values.yaml).
+config:
+  # Client id/secret and the cookie secret come from a hand-created Secret, never
+  # from Git (see existingSecret below). Leave these empty so the chart renders no
+  # secret material into the manifest.
+  clientID: ""
+  clientSecret: ""
+  cookieSecret: ""
+  # Use the hand-created Secret as the single source of truth for credentials:
+  #   # 32-byte cookie secret (AES — must be 16/24/32 bytes):
+  #   #   openssl rand -base64 32 | tr -d '\n'
+  #   kubectl -n oauth2-proxy create secret generic oauth2-proxy \
+  #     --from-literal=client-id=oauth2-proxy \
+  #     --from-literal=client-secret=<secret> \
+  #     --from-literal=cookie-secret=<32-byte-base64>
+  # client-secret must match the "oauth2-proxy" value of the dex-clients Secret.
+  existingSecret: oauth2-proxy
+
+# Extra flags not exposed as first-class chart values.
+extraArgs:
+  provider: oidc
+  oidc-issuer-url: https://dex.kubequest.epitech.beer
+  # The callback Dex redirects back to — must exactly match the staticClient's
+  # redirectURI in helm/dex/values.yaml.
+  redirect-url: https://auth.kubequest.epitech.beer/oauth2/callback
+  # Dex already restricts login to the T-CLO-902-KubeQuest GitHub org, so any user
+  # it authenticates is allowed through — no further email-domain filtering.
+  email-domain: "*"
+  # Forward-auth across sub-domains: scope the session cookie to the parent domain
+  # so a single login covers every *.kubequest.epitech.beer tool (true SSO), and
+  # allow redirects back to any of them after auth.
+  cookie-domain: ".kubequest.epitech.beer"
+  whitelist-domain: ".kubequest.epitech.beer"
+  # Hand the upstream tool the authenticated identity.
+  set-xauthrequest: "true"
+  pass-access-token: "true"
+  # Reverse-proxy mode: trust X-Forwarded-* from ingress-nginx (which terminates
+  # TLS and sets these headers). The chart already sets --http-address.
+  reverse-proxy: "true"
+
+# Session cookie hardening: the chart's defaults are already Secure=true and
+# HttpOnly=true, so the cookie is never sent over plain HTTP nor readable from JS.
+# Combined with cookie-domain above, one hardened cookie covers all sub-domains.
+
+# Internal only; traffic reaches the proxy through the standalone Ingress
+# (k8s/oauth2-proxy/ingress.yaml), so ClusterIP — never LoadBalancer/NodePort.
+service:
+  type: ClusterIP
+  portNumber: 4180
+
+# Ingress is declared as a standalone manifest (like Dex's and Headlamp's, in
+# k8s/oauth2-proxy/ingress.yaml) so TLS via cert-manager lives next to it and
+# stays a reviewable diff. Keep the chart's own Ingress off to avoid two sources.
+ingress:
+  enabled: false
+
+# Constrained cluster: cap the proxy rather than let it burst.
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+# This chart bundles a redis subchart for session storage; we use cookie-based
+# sessions (the default), so keep it off.
+sessionStorage:
+  type: cookie
+redis:
+  enabled: false

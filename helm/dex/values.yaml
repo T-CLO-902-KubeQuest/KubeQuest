@@ -82,6 +82,14 @@ config:
       secretEnv: HEADLAMP_CLIENT_SECRET
       redirectURIs:
         - https://headlamp.kubequest.epitech.beer/oidc-callback
+    # Shared auth layer (Issue #11): the front door for tools that have no auth of
+    # their own. Tools delegate to it via nginx forward-auth; it owns this single
+    # callback regardless of how many tools sit behind it.
+    - id: oauth2-proxy
+      name: oauth2-proxy
+      secretEnv: OAUTH2_PROXY_CLIENT_SECRET
+      redirectURIs:
+        - https://auth.kubequest.epitech.beer/oauth2/callback
 
 # Secrets injected into the Dex pod, all sourced from hand-created Kubernetes
 # Secrets (never committed):
@@ -94,7 +102,8 @@ config:
 #   kubectl -n dex create secret generic dex-clients \
 #     --from-literal=argocd=<secret> \
 #     --from-literal=headlamp=<secret> \
-#     --from-literal=grafana=<secret>
+#     --from-literal=grafana=<secret> \
+#     --from-literal=oauth2-proxy=<secret>
 envVars:
   - name: GITHUB_CLIENT_ID
     valueFrom:
@@ -121,6 +130,11 @@ envVars:
       secretKeyRef:
         name: dex-clients
         key: grafana
+  - name: OAUTH2_PROXY_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: dex-clients
+        key: oauth2-proxy
 
 # Internal only; traffic reaches Dex through the standalone Ingress
 # (k8s/dex/ingress.yaml), so ClusterIP — never LoadBalancer/NodePort.

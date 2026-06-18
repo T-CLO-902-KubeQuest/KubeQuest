@@ -71,10 +71,14 @@ kubectl -n headlamp create secret generic headlamp-oidc \
   --from-literal=clientID=headlamp \
   --from-literal=clientSecret=<secret> \
   --from-literal=issuerURL=https://dex.kubequest.epitech.beer \
-  --from-literal=scopes="openid profile email groups"
+  --from-literal=scopes="profile email groups"
 ```
 `clientSecret` must equal the `headlamp` value of the `dex-clients` Secret on the
 Dex side.
+
+> Do **not** put `openid` in `scopes`: Headlamp prepends it automatically, and a
+> duplicated `openid openid ...` is rejected by Dex, so the login fails. List
+> only the extra scopes (`profile email groups`).
 
 > Regeneration caveat: this chart (0.43.0) only wires the OIDC env vars via
 > `secretKeyRef` when `config.oidc.secret.create=true`, but that also makes it

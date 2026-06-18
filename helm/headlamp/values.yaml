@@ -40,8 +40,12 @@ config:
   #     --from-literal=clientID=headlamp \
   #     --from-literal=clientSecret=<secret> \
   #     --from-literal=issuerURL=https://dex.kubequest.epitech.beer \
-  #     --from-literal=scopes="openid profile email groups"
+  #     --from-literal=scopes="profile email groups"
   # clientSecret must match the "headlamp" value of the dex-clients Secret.
+  #
+  # NOTE: do NOT include "openid" in scopes — Headlamp prepends it itself, and a
+  # duplicate "openid openid ..." is rejected by Dex (login fails). List only the
+  # extra scopes here.
   oidc:
     secret:
       create: true
@@ -49,7 +53,7 @@ config:
     clientID: headlamp
     clientSecret: PLACEHOLDER_STRIPPED_FROM_MANIFEST
     issuerURL: https://dex.kubequest.epitech.beer
-    scopes: "openid profile email groups"
+    scopes: "profile email groups"
 
 # The chart creates a ServiceAccount for the pod and binds it to a ClusterRole.
 serviceAccount:

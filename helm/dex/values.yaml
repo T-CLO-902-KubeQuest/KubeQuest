@@ -1,0 +1,123 @@
+# Dex values used to render k8s/dex/dex.yaml.
+# Chart repo: https://charts.dexidp.io  (chart: dex/dex)
+# Regenerate the manifest with:
+#   helm repo add dex https://charts.dexidp.io
+#   helm repo update dex
+#   helm template dex dex/dex \
+#     --version <CHART_VERSION> \
+#     --namespace dex \
+#     --values helm/dex/values.yaml \
+#     > k8s/dex/dex.yaml
+#
+# Pinned chart version: 0.24.1 (app version 2.44.0).
+#
+# Dex is an application-level OIDC provider (Issue #10): cluster services
+# (Headlamp, Grafana, Argo CD, ...) delegate their login to Dex, which in turn
+# federates GitHub. The Kubernetes API server is NOT wired to Dex here.
+#
+# Only values that diverge from the chart defaults are set below.
+# Reference: https://dexidp.io/docs/configuration/
+
+# Single replica: this cluster has no HA requirement for the IdP.
+replicaCount: 1
+
+image:
+  repository: ghcr.io/dexidp/dex
+  pullPolicy: IfNotPresent
+
+# Dex configuration, rendered into a Secret by the chart (configSecret.create).
+config:
+  # Public URL at which Dex is reached. MUST match the ingress host below and
+  # the issuer URL each client (Grafana, Argo CD, ...) is configured with.
+  issuer: https://dex.kubequest.epitech.beer
+
+  # Store OAuth state in Kubernetes CRDs instead of an external database.
+  storage:
+    type: kubernetes
+    config:
+      inCluster: true
+
+  # Plain HTTP inside the cluster; TLS is terminated at the ingress (like the
+  # other workloads here, Dex sits behind ingress-nginx on ClusterIP).
+  web:
+    http: 0.0.0.0:5556
+
+  oauth2:
+    skipApprovalScreen: true
+
+  # Upstream identity provider: GitHub.
+  # Secrets are injected via env vars (see envVars below) and referenced as
+  # $GITHUB_CLIENT_ID / $GITHUB_CLIENT_SECRET — never inline them here.
+  connectors:
+    - type: github
+      id: github
+      name: GitHub
+      config:
+        clientID: $GITHUB_CLIENT_ID
+        clientSecret: $GITHUB_CLIENT_SECRET
+        redirectURI: https://dex.kubequest.epitech.beer/callback
+        # Restrict and map GitHub orgs/teams to OIDC groups.
+        # orgs:
+        #   - name: my-github-org
+
+  # Services allowed to use Dex as their OIDC provider. One entry per app.
+  # Each client secret must match what the app is configured with; keep real
+  # secrets out of this file (use a sealed secret / external secret if needed).
+  staticClients:
+    - id: grafana
+      name: Grafana
+      secret: CHANGE_ME_grafana
+      redirectURIs:
+        - https://grafana.kubequest.epitech.beer/login/generic_oauth
+    - id: argocd
+      name: ArgoCD
+      secret: CHANGE_ME_argocd
+      redirectURIs:
+        - https://argocd.kubequest.epitech.beer/auth/callback
+    - id: headlamp
+      name: Headlamp
+      secret: CHANGE_ME_headlamp
+      redirectURIs:
+        - https://headlamp.kubequest.epitech.beer/oidc-callback
+
+# GitHub OAuth app credentials, sourced from a pre-created Kubernetes Secret.
+# Create it once (do NOT commit the values):
+#   kubectl -n dex create secret generic dex-github \
+#     --from-literal=clientID=<id> --from-literal=clientSecret=<secret>
+envVars:
+  - name: GITHUB_CLIENT_ID
+    valueFrom:
+      secretKeyRef:
+        name: dex-github
+        key: clientID
+  - name: GITHUB_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: dex-github
+        key: clientSecret
+
+# Internal only; traffic reaches Dex through the standalone Ingress
+# (k8s/dex/ingress.yaml), so ClusterIP — never LoadBalancer/NodePort.
+service:
+  type: ClusterIP
+  ports:
+    http:
+      port: 5556
+
+# Ingress is declared as a standalone manifest (like Argo CD's and Headlamp's,
+# in k8s/dex/ingress.yaml) so TLS via cert-manager lives next to it and stays a
+# reviewable diff. Keep the chart's own Ingress off to avoid two sources.
+ingress:
+  enabled: false
+
+serviceAccount:
+  create: true
+
+# Constrained cluster: cap Dex rather than let it burst.
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi

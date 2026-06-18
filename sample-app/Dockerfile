@@ -1,10 +1,16 @@
-# Utilisez une image Docker officielle pour PHP 7.4 avec Apache
-FROM php:8.2.8-apache
+# Image Docker officielle PHP 8.2 avec Apache.
+# Tag mineur (non figé sur un patch) pour récupérer les correctifs de sécurité.
+FROM php:8.2-apache
 
 # Installez les extensions PHP nécessaires
 RUN docker-php-ext-install pdo_mysql
 
-RUN apt-get update && apt-get install -y git unzip p7zip-full
+# Patche les paquets OS de l'image de base, puis installe les dépendances.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends git unzip p7zip-full \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Installez Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

@@ -20,7 +20,7 @@ if [ -z "$INSTANCE_IDS" ]; then
   exit 0
 fi
 
-echo "Stopping instances:\n$INSTANCE_IDS"
+printf "Stopping instances:\n%s\n" "$INSTANCE_IDS"
 
 aws ec2 stop-instances --instance-ids $INSTANCE_IDS
 

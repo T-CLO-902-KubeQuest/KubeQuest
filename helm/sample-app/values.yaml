@@ -1,10 +1,12 @@
 replicaCount: 2
 
 image:
-  repository: ghcr.io/t-clo-902-kubequest/sample-app
-  # TODO: pin to a semver tag once the CI pipeline builds the image from
-  # conventional commits (semantic-release). "latest" is not reproducible.
-  tag: "latest"
+  # Path published by .github/workflows/sample-app-build.yml
+  # (${{ github.repository }}/sample-app, lowercased by GHCR).
+  repository: ghcr.io/t-clo-902-kubequest/kubequest/sample-app
+  # Empty by default: the chart falls back to Chart.appVersion, which the CI
+  # pipeline publishes as a semver tag. Override per-release with --set if needed.
+  tag: ""
   pullPolicy: IfNotPresent
 
 service:

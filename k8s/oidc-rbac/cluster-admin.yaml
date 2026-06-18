@@ -1,0 +1,25 @@
+# Grant full cluster access to specific users authenticated through Dex.
+#
+# The kube-apiserver is wired to Dex (see ansible role control-plane,
+# apiserver-oidc.yml) with --oidc-username-claim=email and
+# --oidc-username-prefix=oidc:, so an SSO user appears as "oidc:<email>".
+#
+# We bind by USERNAME (not group): with the current GitHub connector (orgs
+# without teams) Dex does not reliably emit the org as a "groups" claim, so a
+# group binding would match nobody. The trade-off is that every member must be
+# listed here by hand — add a subject per person below.
+#
+# This is intentionally broad (cluster-admin = do anything). Tighten later by
+# switching to a group binding once Dex is configured to emit org/team groups.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oidc-admins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: "oidc:glopez-dev@proton.me"

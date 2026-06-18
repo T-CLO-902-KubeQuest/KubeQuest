@@ -1,0 +1,32 @@
+# Ingress exposing the Dex OIDC provider at dex.kubequest.epitech.beer.
+#
+# Dex serves plain HTTP on its Service (port 5556), so no backend-protocol
+# annotation is needed — HTTP is ingress-nginx's default.
+#
+# Starts on the staging issuer to validate HTTP-01 end to end. Once a staging
+# cert is issued, switch the cert-manager.io/cluster-issuer annotation to
+# letsencrypt-prod and delete the staging secret to force a prod re-issue.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dex
+  namespace: dex
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - dex.kubequest.epitech.beer
+      secretName: dex-tls
+  rules:
+    - host: dex.kubequest.epitech.beer
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dex
+                port:
+                  number: 5556

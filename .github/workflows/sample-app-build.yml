@@ -14,7 +14,9 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/sample-app
+  # IMAGE_NAME is derived (lowercased) at runtime — see the "Resolve image name"
+  # step. GHCR/Docker require the repository path to be lowercase, but
+  # ${{ github.repository }} preserves the original casing.
   CHART_PATH: ./helm/sample-app
 
 jobs:
@@ -28,6 +30,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # full history is required to compute the semver bump
+
+      - name: Resolve image name (lowercase)
+        run: |
+          echo "IMAGE_NAME=$(echo '${{ github.repository }}/sample-app' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
 
       - name: Compute next semver tag from conventional commits
         id: semver

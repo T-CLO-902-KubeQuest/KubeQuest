@@ -1,0 +1,34 @@
+# Ingress exposing oauth2-proxy at auth.kubequest.epitech.beer.
+#
+# This is the proxy's own host: it serves the OIDC dance (/oauth2/start,
+# /oauth2/callback, /oauth2/auth) that protected tools delegate to via
+# nginx auth_request. oauth2-proxy serves plain HTTP on its Service (port 4180),
+# so no backend-protocol annotation is needed — HTTP is ingress-nginx's default.
+#
+# TLS is issued by the letsencrypt-prod ClusterIssuer (HTTP-01). The chain was
+# first validated on letsencrypt-staging; see k8s/cert-manager/README.md for the
+# CoreDNS hosts entry that lets the HTTP-01 self-check resolve internally.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oauth2-proxy
+  namespace: oauth2-proxy
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - auth.kubequest.epitech.beer
+      secretName: oauth2-proxy-tls
+  rules:
+    - host: auth.kubequest.epitech.beer
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: oauth2-proxy
+                port:
+                  number: 4180

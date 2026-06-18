@@ -59,15 +59,19 @@ groups to clients that request the `groups` scope.
 
 ## Clients
 Each service that logs in through Dex is declared as a `staticClient` in
-`helm/dex/values.yaml` (Grafana, Argo CD, Headlamp). Client secrets are **not**
-in Git: each entry uses `secretEnv` (dex >= 2.35.0) to read its secret from an
-env var, fed by a hand-created `dex-clients` Secret:
+`helm/dex/values.yaml` (Grafana, Argo CD, Headlamp, oauth2-proxy). Client secrets
+are **not** in Git: each entry uses `secretEnv` (dex >= 2.35.0) to read its secret
+from an env var, fed by a hand-created `dex-clients` Secret:
 ```sh
 kubectl -n dex create secret generic dex-clients \
   --from-literal=argocd=<secret> \
   --from-literal=headlamp=<secret> \
-  --from-literal=grafana=<secret>
+  --from-literal=grafana=<secret> \
+  --from-literal=oauth2-proxy=<secret>
 ```
+The `oauth2-proxy` client is the shared auth layer (Issue #11) that fronts tools
+without their own login (Prometheus, Grafana, ...); see
+`k8s/oauth2-proxy/README.md`.
 Each value must match the client secret configured in the corresponding app
 (e.g. `argocd` here == the OIDC client secret in `argocd-secret`). A client's
 `redirectURIs` must exactly match what the app sends.

@@ -4,24 +4,35 @@
 # kubeadm init (kubeadm-init.yml) does not take --oidc-* flags on its CLI and is
 # guarded to run only once, so the flags are injected here by patching the static
 # pod manifest. kubelet notices the file change and restarts the apiserver
-# automatically (~30-60s of API downtime). The task is idempotent: each flag is
-# only added if absent, and it reports "changed" only when it actually edits the
-# manifest, so re-running the playbook on a live cluster is safe.
-- name: Ensure kube-apiserver OIDC flags are present
-  ansible.builtin.lineinfile:
+# automatically (~30-60s of API downtime). The task is idempotent (it only edits
+# when the issuer flag is absent) and YAML-safe: it inserts the whole flag block
+# in one atomic replace right after the `- kube-apiserver` command entry, keeping
+# the list indentation intact (a per-line lineinfile loop can corrupt it).
+- name: Check whether the apiserver OIDC flags are already present
+  ansible.builtin.command:
+    cmd: grep -q -- '--oidc-issuer-url=' /etc/kubernetes/manifests/kube-apiserver.yaml
+  register: apiserver_oidc_present
+  changed_when: false
+  failed_when: false
+
+- name: Inject kube-apiserver OIDC flags after the command entry
+  ansible.builtin.replace:
     path: /etc/kubernetes/manifests/kube-apiserver.yaml
-    # Insert each flag right after the `- kube-apiserver` command entry so it
-    # lands inside the container's command list with the correct indentation.
-    insertafter: '^\s*- kube-apiserver$'
-    line: "    - {{ item }}"
-    state: present
-  loop:
-    - "--oidc-issuer-url={{ apiserver_oidc_issuer_url }}"
-    - "--oidc-client-id={{ apiserver_oidc_client_id }}"
-    - "--oidc-username-claim={{ apiserver_oidc_username_claim }}"
-    - "--oidc-username-prefix={{ apiserver_oidc_username_prefix }}"
-    - "--oidc-groups-claim={{ apiserver_oidc_groups_claim }}"
-    - "--oidc-groups-prefix={{ apiserver_oidc_groups_prefix }}"
+    # Anchor: the unique "- kube-apiserver" line (4-space indent inside command).
+    # Capture it and re-emit it followed by the OIDC flags at the same indent.
+    regexp: '^(\s+)- kube-apiserver$'
+    # The prefix values end in ":", which YAML would mis-parse unquoted and drop
+    # the list item, corrupting command (kubelet then rejects the manifest). Quote
+    # every value so the flag list stays valid regardless of its content.
+    replace: |-
+      \1- kube-apiserver
+      \1- '--oidc-issuer-url={{ apiserver_oidc_issuer_url }}'
+      \1- '--oidc-client-id={{ apiserver_oidc_client_id }}'
+      \1- '--oidc-username-claim={{ apiserver_oidc_username_claim }}'
+      \1- '--oidc-username-prefix={{ apiserver_oidc_username_prefix }}'
+      \1- '--oidc-groups-claim={{ apiserver_oidc_groups_claim }}'
+      \1- '--oidc-groups-prefix={{ apiserver_oidc_groups_prefix }}'
+  when: apiserver_oidc_present.rc != 0
   register: apiserver_oidc_patch
 
 - name: Wait for the kube-apiserver to become healthy again after the restart

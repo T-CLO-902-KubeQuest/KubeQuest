@@ -32,9 +32,10 @@ command above, then commit the regenerated manifest with the values change.
 Headlamp has no special networking needs — no `hostNetwork`, no control-plane
 pinning. The `Service` stays `ClusterIP`; real traffic reaches it through a
 standalone `Ingress` (`k8s/headlamp/ingress.yaml`) on the `nginx` IngressClass,
-with TLS issued by cert-manager. As with Argo CD, the Ingress starts on the
-`letsencrypt-staging` issuer to validate HTTP-01 end to end, then switches to
-`letsencrypt-prod` once a staging cert is issued.
+with TLS issued by cert-manager. As with Argo CD, the Ingress runs on the
+`letsencrypt-prod` issuer; the chain was first validated on `letsencrypt-staging`
+before switching. The HTTP-01 self-check needs a CoreDNS `hosts` entry for this
+host — see `k8s/cert-manager/README.md`.
 
 Target host: **https://headlamp.kubequest.epitech.beer**
 

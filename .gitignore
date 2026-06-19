@@ -39,3 +39,6 @@ terraform.rc
 .idea/**
 
 ansible/inventory.local.yml
+
+# Local git worktrees
+.worktrees/

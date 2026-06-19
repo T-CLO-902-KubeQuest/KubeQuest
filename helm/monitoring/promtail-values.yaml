@@ -1,0 +1,7 @@
+# Promtail - Collecteur de logs à déployer sur tous les nœuds
+config:
+  lokiAddress: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+
+# Pas de nodeSelector ici car il doit collecter TOUS les nœuds (control-plane + workers)
+tolerations:
+  - operator: Exists

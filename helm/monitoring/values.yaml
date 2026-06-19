@@ -11,8 +11,29 @@
 #   - Stack lourde épinglée sur le nœud monitoring dédié (label workload=monitoring).
 
 # --- Hors scope : visualisation et alerting (économie de ressources) ---
+# --- Scope : Visualisation (Grafana réactivé) ---
 grafana:
-  enabled: false
+  enabled: true
+
+  # Éviter l'utilisation d'un mot de passe par défaut en dur dans Git
+  adminPassword: "ChangerCeMotDePasseSecurise"
+
+  # Ordonnancement sur le nœud dédié monitoring
+  nodeSelector:
+    workload: monitoring
+
+  # Rétention et stockage temporaire (emptyDir pour la démo)
+  persistence:
+    enabled: false
+
+  # Intégration automatique des Datasources (Prometheus local + Loki)
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring.svc.cluster.local:3100
+      version: 1
+      editable: false
 alertmanager:
   enabled: false
 

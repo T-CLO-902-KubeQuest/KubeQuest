@@ -30,7 +30,7 @@ spec:
     repoURL: ghcr.io/t-clo-902-kubequest/kubequest/charts
     chart: sample-app
     # Pinned semver — bump to match the chart/image released by CI.
-    targetRevision: 0.0.1
+    targetRevision: 0.1.0
     helm:
       valuesObject:
         app:

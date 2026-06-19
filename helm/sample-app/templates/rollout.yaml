@@ -1,5 +1,5 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: {{ include "sample-app.fullname" . }}
   labels:
@@ -9,6 +9,22 @@ spec:
   selector:
     matchLabels:
       {{- include "sample-app.selectorLabels" . | nindent 6 }}
+  # A canary that never reaches Ready (broken image / failing /up) keeps the
+  # Rollout Progressing; Argo Rollouts marks it Degraded past this deadline.
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  strategy:
+    canary:
+      # Background analysis (pod-readiness ratio) decides promotion vs rollback.
+      analysis:
+        startingStep: {{ .Values.canary.analysis.startingStep }}
+        templates:
+          - templateName: {{ include "sample-app.fullname" . }}-pods-ready
+        args:
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Latest
+      steps:
+        {{- toYaml .Values.canary.steps | nindent 8 }}
   template:
     metadata:
       labels:
@@ -39,6 +55,8 @@ spec:
               protocol: TCP
           env:
             {{- include "sample-app.env" . | nindent 12 }}
+          # Liveness stays on "/" (process/Apache alive). Tying it to the DB
+          # would kill every pod in a cascade if MySQL blips.
           livenessProbe:
             httpGet:
               path: /
@@ -46,9 +64,12 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 3
+          # Readiness hits Laravel's /up health endpoint, which checks the DB
+          # (and honours the forceUnhealthy demo flag). A broken release never
+          # becomes Ready, so the canary analysis fails and rolls back.
           readinessProbe:
             httpGet:
-              path: /
+              path: /up
               port: http
             initialDelaySeconds: 10
             periodSeconds: 5

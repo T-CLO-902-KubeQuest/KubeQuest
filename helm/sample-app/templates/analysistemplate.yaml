@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ include "sample-app.fullname" . }}-pods-ready
+  labels:
+    {{- include "sample-app.labels" . | nindent 4 }}
+spec:
+  # canary-hash is supplied by the Rollout (podTemplateHashValue: Latest) and
+  # selects the canary ReplicaSet's pods.
+  args:
+    - name: canary-hash
+  metrics:
+    - name: pods-ready-ratio
+      interval: 10s
+      count: 6
+      # All canary pods must be Ready. A broken release yields "0" until the
+      # failureLimit is hit, which fails the AnalysisRun and rolls back.
+      successCondition: "result == 1"
+      failureLimit: 1
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            template:
+              spec:
+                serviceAccountName: {{ include "sample-app.fullname" . }}-analysis
+                restartPolicy: Never
+                containers:
+                  - name: check
+                    image: bitnami/kubectl:1.30
+                    command: ["/bin/sh", "-c"]
+                    args:
+                      - |
+                        set -eu
+                        sel="rollouts-pod-template-hash={{ "{{args.canary-hash}}" }}"
+                        total=$(kubectl get pods -l "$sel" -o name | wc -l)
+                        ready=$(kubectl get pods -l "$sel" \
+                          -o 'jsonpath={range .items[*]}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}' \
+                          | grep -c True || true)
+                        if [ "$total" -gt 0 ] && [ "$ready" -eq "$total" ]; then
+                          echo 1
+                        else
+                          echo 0
+                        fi

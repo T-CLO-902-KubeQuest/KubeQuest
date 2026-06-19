@@ -18,6 +18,10 @@ metadata:
   namespace: mysql
 spec:
   schedule: "0 2 * * *" # Every day at 2 AM
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
       template:
@@ -33,7 +37,30 @@ spec:
                       key: mysql-root-password
               command: ["/bin/sh", "-c"]
               args:
-                - mysqldump --single-transaction -h mysql -u root -p"$MYSQL_ROOT_PASSWORD" laravel > /backups/laravel-$(date +%F-%H%M%S).sql
+                # Write to a .tmp first and rename on success only, so a failed
+                # dump never leaves a partial .sql picked up by the restore.
+                - |
+                  set -e
+                  f=/backups/laravel-$(date +%F-%H%M%S).sql
+                  mysqldump --single-transaction -h mysql -u root -p"$MYSQL_ROOT_PASSWORD" laravel > "$f.tmp"
+                  mv "$f.tmp" "$f"
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 250m
+                  memory: 256Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                runAsNonRoot: true
+                runAsUser: 1001
+                runAsGroup: 1001
+                capabilities:
+                  drop:
+                    - ALL
+                seccompProfile:
+                  type: RuntimeDefault
               volumeMounts:
                 - name: mysql-backups
                   mountPath: /backups
@@ -51,6 +78,10 @@ metadata:
   namespace: mysql
 spec:
   schedule: "0 3 * * *" # Every day at 3 AM
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
       template:
@@ -61,6 +92,23 @@ spec:
               command: ["/bin/sh", "-c"]
               args:
                 - find /backups -type f -name "*.sql" -mtime +7 -delete
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 250m
+                  memory: 256Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                runAsNonRoot: true
+                runAsUser: 1001
+                runAsGroup: 1001
+                capabilities:
+                  drop:
+                    - ALL
+                seccompProfile:
+                  type: RuntimeDefault
               volumeMounts:
                 - name: mysql-backups
                   mountPath: /backups

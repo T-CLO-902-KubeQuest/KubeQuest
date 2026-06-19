@@ -3,7 +3,8 @@
 - Statut : Accepted
 - Date : 2026-06-19
 - Décideurs : équipe KubeQuest
-- PR : [#69](https://github.com/T-CLO-902-KubeQuest/KubeQuest/pull/69)
+- PR : [#69](https://github.com/T-CLO-902-KubeQuest/KubeQuest/pull/69),
+  [#75](https://github.com/T-CLO-902-KubeQuest/KubeQuest/pull/75) (resserrement ingress)
 
 ## Contexte
 
@@ -32,10 +33,15 @@ qui reste régénérable) : `networkPolicy.allowExternalEgress: false` dans
 **DNS** (port 53) et au **trafic intra-cluster**, au lieu d'autoriser toutes les
 destinations.
 
-L'**ingress est volontairement laissé port-only** (`allowExternal: true`) :
-le port 3306 reste accessible depuis n'importe quel pod. Le consommateur
-`sample-app` n'est pas encore déployé, donc son label de pod n'est pas connu ;
-restreindre l'ingress maintenant bloquerait son futur déploiement.
+Resserrer l'ingress (PR #75) : `networkPolicy.allowExternal: false` retire la
+règle port-only ouverte à tous les pods, et une règle `networkPolicy.extraIngress`
+n'autorise le port 3306 que depuis les pods `sample-app`. Comme la policy vit dans
+le namespace `mysql`, la règle combine dans un **même peer** un `namespaceSelector`
+(`kubernetes.io/metadata.name: sample-app`, le label posé automatiquement par
+Kubernetes) **et** un `podSelector` (`app.kubernetes.io/name: sample-app`) — un AND,
+donc seuls les pods `sample-app` de ce namespace correspondent. Le resserrement n'a
+été fait qu'une fois `sample-app` déployé (#62, #65), son label de pod étant alors
+connu.
 
 ### Backups
 
@@ -56,9 +62,9 @@ jamais de `.sql` partiel exploitable par le restore.
 
 ## Alternatives envisagées
 
-- **Restreindre aussi l'ingress par label dès maintenant** : rejeté tant que
-  `sample-app` n'est pas déployé — on bloquerait un consommateur dont le label
-  est inconnu. À traiter dans l'issue de déploiement de l'application.
+- **Resserrer l'ingress par label dès #69** : reporté tant que `sample-app`
+  n'était pas déployé — on aurait bloqué un consommateur dont le label était
+  inconnu. Fait depuis dans #75, une fois l'application déployée.
 - **Éditer directement le bloc `NetworkPolicy` dans `mysql.yaml`** : rejeté, le
   manifest est rendu par `helm template` et doit rester régénérable (cf.
   `k8s/mysql/README.md`). Le changement passe donc par `values.yaml`.
@@ -74,7 +80,8 @@ jamais de `.sql` partiel exploitable par le restore.
 
 ### Négatives / points d'attention
 
-- L'ingress reste ouvert en port-only : **à resserrer par label** une fois
-  `sample-app` déployé.
+- L'ingress n'autorise plus que les pods `sample-app` : tout nouveau consommateur
+  de MySQL devra être ajouté explicitement à `networkPolicy.extraIngress`.
 - Toute régénération future de `mysql.yaml` doit conserver le bloc
-  `networkPolicy` dans `values.yaml`, sinon l'egress redevient permissif.
+  `networkPolicy` dans `values.yaml`, sinon egress et ingress redeviennent
+  permissifs.

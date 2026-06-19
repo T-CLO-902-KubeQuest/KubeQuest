@@ -43,6 +43,10 @@ spec:
           # no secret material is committed to Git.
           existingSecret: sample-app
         db:
+          # MySQL runs in the "mysql" namespace; the app in "sample-app". The
+          # short name "mysql" only resolves within the same namespace, so use
+          # the cross-namespace FQDN.
+          host: mysql.mysql.svc.cluster.local
           # Match the database/user the MySQL chart actually provisions
           # (helm/mysql/values.yaml: auth.database/username = "laravel").
           # The password lives in the existingSecret above (copied from

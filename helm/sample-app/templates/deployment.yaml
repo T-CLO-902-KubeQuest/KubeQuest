@@ -17,6 +17,18 @@ spec:
       securityContext:
         runAsNonRoot: false  # Apache requires root to bind port 80
         fsGroup: 33          # www-data
+      initContainers:
+        # Apply database migrations before the app serves traffic. `migrate` is
+        # idempotent — already-applied migrations are skipped — so it is safe to
+        # run on every rollout and scale-up.
+        - name: migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["php", "artisan", "migrate", "--force"]
+          env:
+            {{- include "sample-app.env" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
       containers:
         - name: app
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -26,30 +38,7 @@ spec:
               containerPort: 80
               protocol: TCP
           env:
-            - name: APP_ENV
-              value: {{ .Values.app.env | quote }}
-            - name: APP_DEBUG
-              value: {{ .Values.app.debug | quote }}
-            - name: APP_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.app.existingSecret | default (include "sample-app.fullname" .) }}
-                  key: APP_KEY
-            - name: DB_CONNECTION
-              value: mysql
-            - name: DB_HOST
-              value: {{ .Values.db.host | quote }}
-            - name: DB_PORT
-              value: {{ .Values.db.port | quote }}
-            - name: DB_DATABASE
-              value: {{ .Values.db.database | quote }}
-            - name: DB_USERNAME
-              value: {{ .Values.db.username | quote }}
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.app.existingSecret | default (include "sample-app.fullname" .) }}
-                  key: DB_PASSWORD
+            {{- include "sample-app.env" . | nindent 12 }}
           livenessProbe:
             httpGet:
               path: /

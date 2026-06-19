@@ -3,7 +3,8 @@
 # Unlike the other workloads (which sync rendered manifests from this Git repo),
 # this Application installs the Helm chart published to GHCR as an OCI artifact
 # by .github/workflows/sample-app-build.yml. The chart and image share the same
-# semver, so pinning targetRevision pins both.
+# semver, so a targetRevision range tracks both (see the source.targetRevision
+# note below for how new releases roll out automatically).
 #
 # Secrets (APP_KEY, DB_PASSWORD) are NOT passed here — they live in a Secret
 # created out-of-band on the cluster (never committed). The chart's
@@ -29,14 +30,29 @@ spec:
     # OCI registry hosting the chart (no chart name in the URL).
     repoURL: ghcr.io/t-clo-902-kubequest/kubequest/charts
     chart: sample-app
-    # Pinned semver — bump to match the chart/image released by CI.
-    targetRevision: 0.0.1
+    # Semver range, not a fixed pin: Argo CD resolves it against the OCI tags on
+    # each refresh and pulls the newest published chart that matches, so CI
+    # releases roll out automatically (selfHeal syncs them). Chart and image
+    # share the same semver, so this upgrades both. Capped below 1.0.0 to keep
+    # a potential breaking major out of the automatic rollout.
+    targetRevision: ">=0.2.0 <1.0.0"
     helm:
       valuesObject:
         app:
           # Read APP_KEY / DB_PASSWORD from this pre-existing cluster Secret so
           # no secret material is committed to Git.
           existingSecret: sample-app
+        db:
+          # MySQL runs in the "mysql" namespace; the app in "sample-app". The
+          # short name "mysql" only resolves within the same namespace, so use
+          # the cross-namespace FQDN.
+          host: mysql.mysql.svc.cluster.local
+          # Match the database/user the MySQL chart actually provisions
+          # (helm/mysql/values.yaml: auth.database/username = "laravel").
+          # The password lives in the existingSecret above (copied from
+          # mysql/mysql-credentials).
+          database: laravel
+          username: laravel
   destination:
     server: https://kubernetes.default.svc
     namespace: sample-app

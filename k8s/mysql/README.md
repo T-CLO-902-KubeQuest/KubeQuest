@@ -83,18 +83,6 @@ CrashLoop. No manual `kubectl apply`.
 Connection from inside the cluster: host `mysql.mysql.svc.cluster.local`, port
 `3306`.
 
-## Network policy
-The chart renders a `NetworkPolicy` (`networkPolicy.enabled: true` in
-`helm/mysql/values.yaml`). Egress is restricted (`allowExternalEgress: false`):
-only DNS resolution and intra-cluster pod traffic are allowed, instead of the
-chart default that permits all destinations. Ingress is restricted
-(`allowExternal: false`): the open port-only rule is removed, and an
-`extraIngress` rule allows port `3306` only from `sample-app` pods. Because the
-policy lives in the `mysql` namespace, the rule combines a `namespaceSelector`
-(`kubernetes.io/metadata.name: sample-app`, the label Kubernetes sets
-automatically) **and** a `podSelector` (`app.kubernetes.io/name: sample-app`) in
-the same peer — an AND, so only sample-app pods in that namespace match.
-
 ## Backup / restore
 Logical backups via `mysqldump` (`k8s/mysql/backup.yaml`). A `VolumeSnapshot`
 approach is not available: `local-path` has no CSI snapshot capability.

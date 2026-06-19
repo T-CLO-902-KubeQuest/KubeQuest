@@ -1,0 +1,26 @@
+# Deployment-time overrides for the sample-app chart, layered on top of the
+# chart's own defaults (baked into the OCI artifact, helm/sample-app/values.yaml).
+#
+# Referenced by argocd/apps/sample-app/application.yaml as a second (ref) source
+# via `$values/argocd/apps/sample-app/values.yaml`, so this config is versioned
+# and diffable on its own instead of living inline in the Application manifest.
+app:
+  # Read APP_KEY / DB_PASSWORD from this pre-existing cluster Secret so no secret
+  # material is committed to Git.
+  existingSecret: sample-app
+  # Demo: set this to true (and sync) to make /up fail, so the new canary never
+  # becomes Ready and Argo Rollouts rolls it back automatically. Set back to
+  # false to recover. The app is deployed as an Argo Rollouts Rollout (canary);
+  # see helm/sample-app.
+  forceUnhealthy: false
+
+db:
+  # MySQL runs in the "mysql" namespace; the app in "sample-app". The short name
+  # "mysql" only resolves within the same namespace, so use the cross-namespace
+  # FQDN.
+  host: mysql.mysql.svc.cluster.local
+  # Match the database/user the MySQL chart actually provisions
+  # (helm/mysql/values.yaml: auth.database/username = "laravel"). The password
+  # lives in the existingSecret above (copied from mysql/mysql-credentials).
+  database: laravel
+  username: laravel

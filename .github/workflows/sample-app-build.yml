@@ -14,17 +14,16 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  # IMAGE_NAME is derived (lowercased) at runtime — see the "Resolve image name"
-  # step. GHCR/Docker require the repository path to be lowercase, but
-  # ${{ github.repository }} preserves the original casing.
   CHART_PATH: ./helm/sample-app
 
 jobs:
-  build-scan-publish:
+  # Compute everything shared by the per-arch builds once, so both architectures
+  # publish under the same image name and semver.
+  prepare:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # needed to push the semver tag
-      packages: write # needed to push the image to GHCR
+    outputs:
+      version: ${{ steps.semver.outputs.new_version }}
+      image_name: ${{ steps.image.outputs.name }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,8 +31,11 @@ jobs:
           fetch-depth: 0 # full history is required to compute the semver bump
 
       - name: Resolve image name (lowercase)
+        id: image
+        # GHCR/Docker require a lowercase repository path, but
+        # ${{ github.repository }} preserves the original casing.
         run: |
-          echo "IMAGE_NAME=$(echo '${{ github.repository }}/sample-app' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+          echo "name=$(echo '${{ github.repository }}/sample-app' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Compute next semver tag from conventional commits
         id: semver
@@ -42,14 +44,110 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           default_bump: patch
           release_branches: main
-          dry_run: true # we tag manually below, after a successful push
+          dry_run: true # the tag is pushed by the publish job, after a successful push
 
-      # The cluster runs on arm64 (AWS Graviton) nodes, so the image must be
-      # built for linux/arm64. The GitHub runner is amd64, hence QEMU emulation.
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+  # One native build per architecture: amd64 on the x86 runner, arm64 on the
+  # GitHub-hosted Graviton runner. No QEMU emulation. Each job scans its own
+  # image, then pushes it by digest (no tag) so the publish job can assemble a
+  # multi-arch manifest list from the per-arch digests.
+  build:
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      packages: write # needed to push the image to GHCR
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - platform: linux/amd64
+            arch: amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          platforms: arm64
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image (load locally for scanning)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./sample-app
+          load: true
+          platforms: ${{ matrix.platform }}
+          tags: ${{ env.REGISTRY }}/${{ needs.prepare.outputs.image_name }}:${{ needs.prepare.outputs.version }}-${{ matrix.arch }}
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ needs.prepare.outputs.image_name }}:${{ needs.prepare.outputs.version }}-${{ matrix.arch }}
+          format: table
+          exit-code: "1" # fail the pipeline on findings
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+          vuln-type: os,library
+
+      - name: Push image by digest
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./sample-app
+          platforms: ${{ matrix.platform }}
+          # Push by digest only; the multi-arch tags are applied by the publish
+          # job's manifest list. outputs.push-by-digest writes no tag.
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ needs.prepare.outputs.image_name }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.push.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # Assemble the multi-arch manifest list from the per-arch digests, tag the git
+  # commit, and release the matching Helm chart.
+  publish:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # needed to push the semver tag
+      packages: write # needed to push the manifest list and chart to GHCR
+    env:
+      IMAGE_NAME: ${{ needs.prepare.outputs.image_name }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digest-*
+          merge-multiple: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -67,40 +165,22 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=${{ steps.semver.outputs.new_version }}
+            type=raw,value=${{ env.VERSION }}
             type=raw,value=latest
             type=sha,format=short
 
-      - name: Build image (load locally for scanning)
-        uses: docker/build-push-action@v6
-        with:
-          context: ./sample-app
-          load: true
-          platforms: linux/arm64
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.semver.outputs.new_version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Create multi-arch manifest list
+        working-directory: /tmp/digests
+        run: |
+          set -euo pipefail
+          # One -t per desired tag, sourcing all per-arch digests.
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
 
-      - name: Scan image with Trivy
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.semver.outputs.new_version }}
-          format: table
-          exit-code: "1" # fail the pipeline on findings
-          ignore-unfixed: true
-          severity: CRITICAL,HIGH
-          vuln-type: os,library
-
-      - name: Push image to GHCR
-        uses: docker/build-push-action@v6
-        with:
-          context: ./sample-app
-          push: true
-          platforms: linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Inspect manifest
+        run: |
+          docker buildx imagetools inspect "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}"
 
       - name: Create and push semver git tag
         uses: mathieudutour/github-tag-action@v6.2
@@ -108,7 +188,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           default_bump: patch
           release_branches: main
-          custom_tag: ${{ steps.semver.outputs.new_version }}
+          custom_tag: ${{ env.VERSION }}
           tag_prefix: v
 
       # --- Helm chart release (same semver as the image just published) ---
@@ -117,12 +197,9 @@ jobs:
         uses: azure/setup-helm@v4
 
       - name: Package and push Helm chart to GHCR
-        env:
-          VERSION: ${{ steps.semver.outputs.new_version }}
         run: |
           set -euo pipefail
           # GHCR requires a lowercase repository path.
-          OWNER_LC="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
           REPO_LC="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
           CHART_REF="oci://ghcr.io/${REPO_LC}/charts"
 

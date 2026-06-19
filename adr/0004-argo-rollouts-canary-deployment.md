@@ -40,31 +40,38 @@ Le controller Argo Rollouts est ajouté à l'app-of-apps comme manifest pré-ren
 que `sample-app` (wave 1) ne crée son `Rollout`. Même pattern vendoré +
 `ServerSideApply=true` que cert-manager et mysql.
 
-### Critère de succès : ratio de pods Ready (sans Prometheus)
+### Critère de succès : santé HTTP `/readyz` (sans Prometheus)
 
-Faute de Prometheus, l'analyse repose sur un `AnalysisTemplate` qui calcule le
-**ratio de pods Ready du ReplicaSet canary** via un `Job` `kubectl` (RBAC limité
-en lecture sur les `pods` du namespace, `templates/analysis-rbac.yaml`). Si tous
-les pods canary deviennent Ready, le canary est promu ; sinon l'`AnalysisRun`
-échoue, le `Rollout` est **aborté et rollback automatiquement** vers le
-ReplicaSet stable.
+Faute de Prometheus, l'analyse repose sur un `AnalysisTemplate` en provider
+**`web`** qui interroge directement l'endpoint **`/readyz`** de l'application
+(`http://<svc>/readyz`, JSON `{"healthy": …}`). Si `/readyz` répond
+`{"healthy": true}` (200), le canary est promu ; s'il échoue (503), au-delà du
+`failureLimit` l'`AnalysisRun` passe `Failed`, le `Rollout` est **aborté et
+rollback automatiquement** vers le ReplicaSet stable.
 
-### Sondes honnêtes : `/up` adossé à la base
+> Note d'implémentation : une première version calculait le ratio de pods Ready
+> via un `Job` `kubectl` + RBAC. Cette approche s'est révélée fragile (image
+> kubectl à maintenir, verdict basé sur l'exit-code du Job, et un `failureLimit`
+> strict faisant échouer un canary sain sur une mesure transitoire). Le provider
+> `web` sur `/readyz` la remplace : pas de `Job`, pas de RBAC, et le verdict est
+> le vrai signal de santé applicative.
 
-La readiness pointe désormais sur `/up`, l'endpoint de santé natif de Laravel 12,
-enrichi (listener `DiagnosingHealth` dans `AppServiceProvider`) pour ouvrir une
-vraie connexion à la base. Un canary dont la base est injoignable n'atteint jamais
-Ready et est rollback. La liveness reste sur `/` à dessein : l'adosser à la base
+### Sondes honnêtes : `/readyz` adossé à la base
+
+La readiness pointe sur `/readyz` (`routes/web.php`), qui ouvre une vraie
+connexion à la base et renvoie du JSON. Un canary dont la base est injoignable
+n'atteint jamais Ready et est rollback ; le même endpoint sert de critère à
+l'`AnalysisRun`. La liveness reste sur `/` à dessein : l'adosser à la base
 provoquerait un redémarrage en cascade de tous les pods en cas de hoquet MySQL.
 
 ### Démonstration : flag `app.forceUnhealthy`
 
 Pour démontrer le rollback sans builder d'image volontairement cassée (le scan
 Trivy de la CI bloquerait une image vulnérable), un flag Helm `app.forceUnhealthy`
-expose une variable d'env `APP_FORCE_UNHEALTHY` qui force `/up` à répondre 500. La
-démo se fait en GitOps : passer `forceUnhealthy: true` dans l'Application
+expose une variable d'env `APP_FORCE_UNHEALTHY` qui force `/readyz` à répondre
+503. La démo se fait en GitOps : passer `forceUnhealthy: true` dans l'Application
 `sample-app` puis sync → le canary échoue → rollback automatique observable ;
-repasser à `false` pour récupérer.
+repasser à `false` (puis `kubectl argo rollouts retry`) pour récupérer.
 
 ## Alternatives envisagées
 
@@ -90,16 +97,19 @@ repasser à `false` pour récupérer.
   sur les critères d'acceptation de l'issue #21.
 - La readiness reflète l'état applicatif réel (base de données), pas seulement la
   vivacité du process.
-- Aucune dépendance Prometheus ; l'analyse réutilise l'information de readiness
-  déjà produite par Kubernetes.
+- Aucune dépendance Prometheus ; l'analyse interroge directement la santé HTTP de
+  l'application (`/readyz`).
 
 ### Négatives / points d'attention
 
 - Nouveau composant à opérer (controller Argo Rollouts, CRDs).
 - `progressDeadlineSeconds` doit rester supérieur à la somme des pauses canary,
   sinon un canary sain mais lent serait faussement marqué `Degraded`.
-- Le `Job` d'analyse a besoin d'un RBAC `pods` (get/list) dans le namespace,
-  sinon il échoue pour la mauvaise raison.
+- L'`AnalysisRun` web cible le `Service` (qui fronte tous les pods) ; cela suffit
+  ici car `forceUnhealthy` / une image cassée affectent tous les pods, mais ne
+  distingue pas un pod canary isolément.
+- Après un rollback, le flag `abort` du `Rollout` est *collant* : il faut un
+  `kubectl argo rollouts retry rollout` pour relancer un canary sain.
 - Sur un bootstrap de cluster *from scratch*, Argo CD ne sérialise pas la
   synchronisation entre Applications : `sample-app` peut tenter d'appliquer son
   `Rollout` avant que les CRDs ne soient présents. La synchronisation converge par

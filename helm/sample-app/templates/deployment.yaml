@@ -33,7 +33,7 @@ spec:
             - name: APP_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "sample-app.fullname" . }}
+                  name: {{ .Values.app.existingSecret | default (include "sample-app.fullname" .) }}
                   key: APP_KEY
             - name: DB_CONNECTION
               value: mysql
@@ -48,7 +48,7 @@ spec:
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "sample-app.fullname" . }}
+                  name: {{ .Values.app.existingSecret | default (include "sample-app.fullname" .) }}
                   key: DB_PASSWORD
           livenessProbe:
             httpGet:

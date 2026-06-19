@@ -23,7 +23,21 @@ spec:
     - Ingress
     - Egress
   egress:
-    - {}
+    # Allow dns resolution
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Allow connection to other cluster pods
+    - ports:
+        - port: 3306
+        - port: 3306
+      to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: mysql
+              app.kubernetes.io/name: mysql
   ingress:
     - ports:
         - port: 3306

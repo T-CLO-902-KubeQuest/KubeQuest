@@ -17,3 +17,12 @@ primary:
       cpu: "500m"
 image:
   repository: "bitnamilegacy/mysql"
+networkPolicy:
+  enabled: true
+  # Ingress reste port-only (3306 depuis n'importe quel pod) : le consommateur
+  # `sample-app` n'est pas encore déployé. À resserrer par label client dans
+  # l'issue app-deployment, une fois ce label connu.
+  allowExternal: true
+  # Egress limité à la résolution DNS + aux pods intra-cluster (généré par le
+  # chart) au lieu d'autoriser toutes les destinations.
+  allowExternalEgress: false

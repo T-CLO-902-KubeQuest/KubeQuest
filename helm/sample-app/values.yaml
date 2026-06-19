@@ -16,9 +16,15 @@ service:
 ingress:
   enabled: true
   className: nginx
-  host: app.kubequest.local
+  host: app.kubequest.epitech.beer
   path: /
   pathType: Prefix
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    enabled: true
+    # Defaults to "<fullname>-tls" when empty.
+    secretName: ""
 
 resources:
   requests:
@@ -33,6 +39,10 @@ app:
   debug: "false"
   # APP_KEY must be provided at install time, never committed
   key: ""
+  # When set, the chart skips creating its own Secret and the Deployment reads
+  # APP_KEY and DB_PASSWORD from this pre-existing Secret instead. Used by the
+  # GitOps install so no secret material ever lands in Git.
+  existingSecret: ""
 
 db:
   host: mysql

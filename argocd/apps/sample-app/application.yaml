@@ -42,6 +42,11 @@ spec:
           # Read APP_KEY / DB_PASSWORD from this pre-existing cluster Secret so
           # no secret material is committed to Git.
           existingSecret: sample-app
+          # Demo: set this to true (and sync) to make /up fail, so the new
+          # canary never becomes Ready and Argo Rollouts rolls it back
+          # automatically. Set back to false to recover. The app is deployed as
+          # an Argo Rollouts Rollout (canary); see helm/sample-app.
+          forceUnhealthy: false
         db:
           # MySQL runs in the "mysql" namespace; the app in "sample-app". The
           # short name "mysql" only resolves within the same namespace, so use

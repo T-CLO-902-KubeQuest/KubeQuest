@@ -1,0 +1,31 @@
+# Argo Rollouts controller. Rendered to k8s/argo-rollouts/argo-rollouts.yaml via:
+#
+#   helm template argo-rollouts argo/argo-rollouts \
+#     --version 2.41.0 --include-crds -n argo-rollouts \
+#     -f helm/argo-rollouts/values.yaml > k8s/argo-rollouts/argo-rollouts.yaml
+#
+# (chart repo: https://argoproj.github.io/argo-helm)
+
+# Install the Rollout/AnalysisTemplate/... CRDs alongside the controller.
+installCRDs: true
+
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+# Read-only dashboard, handy to visualise the canary live during the demo.
+dashboard:
+  enabled: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

@@ -17,3 +17,4 @@ contexte et ses conséquences.
 | ADR | Titre | Statut |
 | --- | --- | --- |
 | [0001](0001-migrate-sample-app-to-laravel-12.md) | Migration de la sample-app vers Laravel 12 | Accepted |
+| [0002](0002-mysql-network-policy-and-backup-hardening.md) | Durcissement de la NetworkPolicy et des backups MySQL | Accepted |

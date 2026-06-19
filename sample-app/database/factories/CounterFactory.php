@@ -32,7 +32,7 @@ class CounterFactory extends Factory
     public function definition()
     {
         return [
-            'counter' => 1
+            'count' => 1
         ];
     }
 }

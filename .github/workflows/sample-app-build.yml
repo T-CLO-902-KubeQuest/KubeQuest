@@ -44,6 +44,13 @@ jobs:
           release_branches: main
           dry_run: true # we tag manually below, after a successful push
 
+      # The cluster runs on arm64 (AWS Graviton) nodes, so the image must be
+      # built for linux/arm64. The GitHub runner is amd64, hence QEMU emulation.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -69,6 +76,7 @@ jobs:
         with:
           context: ./sample-app
           load: true
+          platforms: linux/arm64
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.semver.outputs.new_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -88,6 +96,7 @@ jobs:
         with:
           context: ./sample-app
           push: true
+          platforms: linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

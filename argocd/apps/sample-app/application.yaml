@@ -37,6 +37,13 @@ spec:
           # Read APP_KEY / DB_PASSWORD from this pre-existing cluster Secret so
           # no secret material is committed to Git.
           existingSecret: sample-app
+        db:
+          # Match the database/user the MySQL chart actually provisions
+          # (helm/mysql/values.yaml: auth.database/username = "laravel").
+          # The password lives in the existingSecret above (copied from
+          # mysql/mysql-credentials).
+          database: laravel
+          username: laravel
   destination:
     server: https://kubernetes.default.svc
     namespace: sample-app

@@ -1,0 +1,48 @@
+# sample-app (Laravel) — synced by the root app-of-apps.
+#
+# Unlike the other workloads (which sync rendered manifests from this Git repo),
+# this Application installs the Helm chart published to GHCR as an OCI artifact
+# by .github/workflows/sample-app-build.yml. The chart and image share the same
+# semver, so pinning targetRevision pins both.
+#
+# Secrets (APP_KEY, DB_PASSWORD) are NOT passed here — they live in a Secret
+# created out-of-band on the cluster (never committed). The chart's
+# app.existingSecret points the Deployment at it; see notes below.
+#
+#   kubectl -n sample-app create secret generic sample-app \
+#     --from-literal=APP_KEY="base64:..." \
+#     --from-literal=DB_PASSWORD="..."
+#
+# Wave 1: depends on mysql (wave 0) being up.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-app
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    # OCI registry hosting the chart (no chart name in the URL).
+    repoURL: ghcr.io/t-clo-902-kubequest/kubequest/charts
+    chart: sample-app
+    # Pinned semver — bump to match the chart/image released by CI.
+    targetRevision: 0.0.1
+    helm:
+      valuesObject:
+        app:
+          # Read APP_KEY / DB_PASSWORD from this pre-existing cluster Secret so
+          # no secret material is committed to Git.
+          existingSecret: sample-app
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sample-app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

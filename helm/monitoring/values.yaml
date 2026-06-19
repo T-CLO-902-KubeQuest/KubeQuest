@@ -16,7 +16,7 @@ grafana:
   enabled: true
 
   # Éviter l'utilisation d'un mot de passe par défaut en dur dans Git
-  adminPassword: "ChangerCeMotDePasseSecurise"
+  adminPassword: "root"
 
   # Ordonnancement sur le nœud dédié monitoring
   nodeSelector:

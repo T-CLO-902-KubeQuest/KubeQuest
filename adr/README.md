@@ -18,3 +18,4 @@ contexte et ses conséquences.
 | --- | --- | --- |
 | [0001](0001-migrate-sample-app-to-laravel-12.md) | Migration de la sample-app vers Laravel 12 | Accepted |
 | [0002](0002-mysql-network-policy-and-backup-hardening.md) | Durcissement de la NetworkPolicy et des backups MySQL | Accepted |
+| [0003](0003-native-multiarch-image-build.md) | Build multi-arch natif de l'image sample-app | Accepted |

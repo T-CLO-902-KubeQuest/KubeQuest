@@ -3,7 +3,7 @@
 - Statut : Accepted
 - Date : 2026-06-19
 - Décideurs : équipe KubeQuest
-- PR : [#64](https://github.com/T-CLO-902-KubeQuest/KubeQuest/pull/64)
+- PR : [#69](https://github.com/T-CLO-902-KubeQuest/KubeQuest/pull/69)
 
 ## Contexte
 

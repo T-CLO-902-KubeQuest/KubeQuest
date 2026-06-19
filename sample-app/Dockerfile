@@ -1,6 +1,6 @@
-# Image Docker officielle PHP 8.2 avec Apache.
+# Image Docker officielle PHP 8.3 avec Apache.
 # Tag mineur (non figé sur un patch) pour récupérer les correctifs de sécurité.
-FROM php:8.2-apache
+FROM php:8.3-apache
 
 # Installez les extensions PHP nécessaires
 RUN docker-php-ext-install pdo_mysql

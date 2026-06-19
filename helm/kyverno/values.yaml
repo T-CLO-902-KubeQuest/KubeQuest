@@ -1,0 +1,53 @@
+# Kyverno values used to render k8s/kyverno/kyverno.yaml.
+# Regenerate the manifest with:
+#   helm repo add kyverno https://kyverno.github.io/kyverno/
+#   helm repo update kyverno
+#   helm template kyverno kyverno/kyverno \
+#     --version 3.8.1 \
+#     --namespace kyverno \
+#     --values helm/kyverno/values.yaml \
+#     > k8s/kyverno/kyverno.yaml
+#
+# Pinned chart version: 3.8.1 (app version v1.18.1).
+
+# Only values that DIFFER from the chart defaults live here; Helm deep-merges,
+# so untouched keys (memory limits/requests, security contexts, etc.) keep the
+# maintainers' recommended values.
+
+# --- High availability ---
+# The chart already ships one replica per controller, i.e. non-HA by default.
+# We pin replicas: 1 explicitly to document the decision: this Epitech cluster
+# is resource-constrained, so no HA. The issue's "HA or failurePolicy" concern
+# is addressed by each policy's failurePolicy, not by replicating controllers.
+#
+# --- requests vs limits ---
+# requests = what the scheduler reserves to fit the pod on a node.
+# limits   = the hard ceiling the kernel enforces at runtime.
+# On a small node we trim CPU *requests* (reserve less, schedule more easily)
+# but leave the chart's memory limits untouched so the admission webhook never
+# OOMs — an OOMing webhook would stall every create/update on the API server.
+
+admissionController:
+  replicas: 1
+  container:
+    resources:
+      requests:
+        cpu: 50m
+
+backgroundController:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+
+cleanupController:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+
+reportsController:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m

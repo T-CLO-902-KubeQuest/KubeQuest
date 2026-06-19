@@ -1,0 +1,19 @@
+architecture: "standalone"
+auth:
+  database: "laravel"
+  username: "laravel"
+  existingSecret: "mysql-credentials"
+primary:
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: "local-path"
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+image:
+  repository: "bitnamilegacy/mysql"

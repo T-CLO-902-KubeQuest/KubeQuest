@@ -1,0 +1,71 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-backups
+  namespace: mysql
+spec:
+  accessModes: [ ReadWriteOnce ]
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: local-path
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mysql-backup
+  namespace: mysql
+spec:
+  schedule: "0 2 * * *" # Every day at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: mysql-backup
+              image: docker.io/bitnamilegacy/mysql:8.0.37-debian-12-r2
+              env:
+                - name: MYSQL_ROOT_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: mysql-credentials
+                      key: mysql-root-password
+              command: ["/bin/sh", "-c"]
+              args:
+                - mysqldump --single-transaction -h mysql -u root -p"$MYSQL_ROOT_PASSWORD" laravel > /backups/laravel-$(date +%F-%H%M%S).sql
+              volumeMounts:
+                - name: mysql-backups
+                  mountPath: /backups
+          restartPolicy: OnFailure
+          volumes:
+            - name: mysql-backups
+              persistentVolumeClaim:
+                claimName: mysql-backups
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mysql-backup-cleanup
+  namespace: mysql
+spec:
+  schedule: "0 3 * * *" # Every day at 3 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: mysql-backup-cleanup
+              image: docker.io/bitnamilegacy/mysql:8.0.37-debian-12-r2
+              command: ["/bin/sh", "-c"]
+              args:
+                - find /backups -type f -name "*.sql" -mtime +7 -delete
+              volumeMounts:
+                - name: mysql-backups
+                  mountPath: /backups
+          restartPolicy: OnFailure
+          volumes:
+            - name: mysql-backups
+              persistentVolumeClaim:
+                claimName: mysql-backups

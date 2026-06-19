@@ -87,10 +87,13 @@ Connection from inside the cluster: host `mysql.mysql.svc.cluster.local`, port
 The chart renders a `NetworkPolicy` (`networkPolicy.enabled: true` in
 `helm/mysql/values.yaml`). Egress is restricted (`allowExternalEgress: false`):
 only DNS resolution and intra-cluster pod traffic are allowed, instead of the
-chart default that permits all destinations. Ingress is left port-only
-(`allowExternal: true`): port `3306` is reachable from any pod, because the
-`sample-app` consumer is not deployed yet. **Tighten ingress to the app's pod
-label in the app-deployment issue**, once that label is known.
+chart default that permits all destinations. Ingress is restricted
+(`allowExternal: false`): the open port-only rule is removed, and an
+`extraIngress` rule allows port `3306` only from `sample-app` pods. Because the
+policy lives in the `mysql` namespace, the rule combines a `namespaceSelector`
+(`kubernetes.io/metadata.name: sample-app`, the label Kubernetes sets
+automatically) **and** a `podSelector` (`app.kubernetes.io/name: sample-app`) in
+the same peer — an AND, so only sample-app pods in that namespace match.
 
 ## Backup / restore
 Logical backups via `mysqldump` (`k8s/mysql/backup.yaml`). A `VolumeSnapshot`

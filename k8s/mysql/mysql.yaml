@@ -42,6 +42,23 @@ spec:
     - ports:
         - port: 3306
         - port: 3306
+      from:
+        - podSelector:
+            matchLabels:
+              mysql-client: "true"
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: mysql
+              app.kubernetes.io/name: mysql
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: sample-app
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/name: sample-app
+      ports:
+      - port: 3306
 ---
 # Source: mysql/templates/serviceaccount.yaml
 apiVersion: v1

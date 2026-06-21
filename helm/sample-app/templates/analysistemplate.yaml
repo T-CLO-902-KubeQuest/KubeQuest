@@ -1,47 +1,31 @@
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
 metadata:
-  name: {{ include "sample-app.fullname" . }}-pods-ready
+  name: {{ include "sample-app.fullname" . }}-app-health
   labels:
     {{- include "sample-app.labels" . | nindent 4 }}
 spec:
-  # canary-hash is supplied by the Rollout (podTemplateHashValue: Latest) and
-  # selects the canary ReplicaSet's pods.
-  args:
-    - name: canary-hash
   metrics:
-    - name: pods-ready-ratio
-      interval: 10s
-      count: 6
-      # The `job` provider derives the result solely from the Job's exit code
-      # (it does NOT read stdout): exit 0 => measurement Successful, non-zero =>
-      # Failed. failureLimit: 1 means a single failed measurement fails the whole
-      # AnalysisRun, which aborts the Rollout and rolls back to the stable RS.
-      failureLimit: 1
+    - name: app-health
+      # Give the canary time to boot and pass its readinessProbe before the
+      # first measurement, so a healthy-but-still-starting canary is not failed.
+      initialDelay: 30s
+      interval: 15s
+      count: 4
+      # /readyz must answer 200 with {"healthy":true}. failureLimit tolerates a
+      # transient blip; a broken release (forceUnhealthy / DB down => 503) fails
+      # every probe and, once the limit is exceeded, fails the AnalysisRun -> the
+      # Rollout aborts and rolls back to the stable ReplicaSet.
+      # Note: a non-2xx (503) is reported by the web provider as a measurement
+      # error before the body is parsed, which also fails the run.
+      successCondition: "result == true"
+      failureLimit: 2
       provider:
-        job:
-          spec:
-            backoffLimit: 0
-            template:
-              spec:
-                serviceAccountName: {{ include "sample-app.fullname" . }}-analysis
-                restartPolicy: Never
-                containers:
-                  - name: check
-                    # alpine-based (ships /bin/sh, unlike the distroless
-                    # registry.k8s.io/kubectl image) and actually published on
-                    # Docker Hub (unlike the now-removed bitnami/kubectl).
-                    image: alpine/kubectl:1.36.2
-                    command: ["/bin/sh", "-c"]
-                    args:
-                      - |
-                        set -eu
-                        sel="rollouts-pod-template-hash={{ "{{args.canary-hash}}" }}"
-                        total=$(kubectl get pods -l "$sel" -o name | wc -l)
-                        ready=$(kubectl get pods -l "$sel" \
-                          -o 'jsonpath={range .items[*]}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}' \
-                          | grep -c True || true)
-                        echo "canary pods ready: ${ready}/${total}"
-                        # Exit non-zero (=> measurement Failed) unless every
-                        # canary pod is Ready.
-                        [ "$total" -gt 0 ] && [ "$ready" -eq "$total" ]
+        # Hit the DB-backed /readyz endpoint directly over HTTP. No Job, no
+        # RBAC, no kubectl image: the measurement is the real application health
+        # signal. The Service fronts all pods, but forceUnhealthy / a broken
+        # image affects every pod, so a bad release is reflected here.
+        web:
+          url: http://{{ include "sample-app.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local/readyz
+          timeoutSeconds: 5
+          jsonPath: "{$.healthy}"

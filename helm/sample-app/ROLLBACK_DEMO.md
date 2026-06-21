@@ -5,9 +5,9 @@ déploiement cassé de `sample-app` (issue #21, Bloc 3).
 
 L'application est déployée comme un **`Rollout` Argo Rollouts** en stratégie
 canary. Une nouvelle révision est d'abord déployée comme canary (1 pod sur 2) ;
-un `AnalysisRun` vérifie que **tous les pods canary deviennent `Ready`** (sonde
-`/up` adossée à la base de données). Si le canary échoue, le `Rollout` est
-**aborté et rollback automatiquement** vers la version stable précédente.
+un `AnalysisRun` interroge l'endpoint **`/readyz`** de l'application en HTTP
+(adossé à la base de données). S'il échoue, le `Rollout` est **aborté et
+rollback automatiquement** vers la version stable précédente.
 
 ## Pré-requis
 
@@ -54,7 +54,7 @@ kubectl get application sample-app -n argocd \
 
 ## Étape 1 — casser le déploiement (GitOps)
 
-On force la sonde `/up` à échouer via le flag `app.forceUnhealthy`, sans avoir à
+On force la sonde `/readyz` à échouer via le flag `app.forceUnhealthy`, sans avoir à
 construire une image volontairement cassée (l'image reste la même). Éditer
 `argocd/apps/sample-app/values.yaml` :
 
@@ -73,11 +73,11 @@ ce qui crée une nouvelle révision du `Rollout`.
 
 Dans la vue `--watch`, on voit :
 
-1. Un **canary** apparaît (1 pod nouvelle révision) ; son `/up` renvoie 500, il
-   reste `0/1` `Ready`.
-2. L'**`AnalysisRun` `pods-ready-ratio`** s'exécute : le Job d'analyse constate
-   `canary pods ready: 0/1` et **sort en erreur** ; après `failureLimit`,
-   l'`AnalysisRun` passe **`Failed`**.
+1. Un **canary** apparaît (1 pod nouvelle révision) ; son `/readyz` renvoie 503,
+   il reste `0/1` `Ready`.
+2. L'**`AnalysisRun` `app-health`** s'exécute : le provider web appelle `/readyz`,
+   reçoit `{"healthy":false}` (503) ; après `failureLimit`, l'`AnalysisRun` passe
+   **`Failed`**.
 3. Le `Rollout` est **aborté** et **revient à la version stable**.
 
 Preuves en ligne de commande :
@@ -85,7 +85,7 @@ Preuves en ligne de commande :
 ```sh
 kubectl get analysisrun -n "$NS" --sort-by=.metadata.creationTimestamp | tail -1   # ... Failed
 kubectl describe rollout "$RO" -n "$NS" | sed -n '/Events:/,$p' | grep -E 'AnalysisRunFailed|RolloutAborted'
-# RolloutAborted ... Metric "pods-ready-ratio" assessed Failed ...
+# RolloutAborted ... Metric "app-health" assessed Failed ...
 
 kubectl get rollout "$RO" -n "$NS" \
   -o jsonpath='{"abort: "}{.status.abort}{"  phase: "}{.status.phase}{"\n"}'        # abort: true  phase: Degraded
@@ -118,7 +118,7 @@ kubectl get rs -n "$NS" -o custom-columns=NAME:.metadata.name,DESIRED:.spec.repl
    ```
 
    Le canary sain est alors créé, l'`AnalysisRun` réussit (`canary pods ready:
-   1/1`, Job exit 0) et le `Rollout` est promu → **`✔ Healthy`**.
+   `/readyz` = `{"healthy":true}`) et le `Rollout` est promu → **`✔ Healthy`**.
 
 ```sh
 kubectl argo rollouts get rollout "$RO" -n "$NS"   # Status: ✔ Healthy, Step 2/2, weight 100
@@ -128,11 +128,10 @@ kubectl argo rollouts get rollout "$RO" -n "$NS"   # Status: ✔ Healthy, Step 2
 
 | Brique | Rôle |
 |---|---|
-| `templates/rollout.yaml` | `Rollout` canary ; readiness sur `/up`, liveness sur `/` |
-| `app/Providers/AppServiceProvider.php` (sample-app) | `/up` vérifie la DB ; honore `APP_FORCE_UNHEALTHY` |
-| `templates/analysistemplate.yaml` | `AnalysisRun` : Job `kubectl` comptant le ratio de pods `Ready` (verdict = **exit code** du Job, pas de Prometheus) |
-| `templates/analysis-rbac.yaml` | `ServiceAccount`/`Role` (get/list `pods`) pour le Job |
-| `app.forceUnhealthy` (valeur Helm) | levier de démo : force `/up` à échouer |
+| `templates/rollout.yaml` | `Rollout` canary ; readiness sur `/readyz`, liveness sur `/` |
+| `routes/web.php` (sample-app) | `/readyz` : JSON `{"healthy":…}`, vérifie la DB et honore `APP_FORCE_UNHEALTHY` |
+| `templates/analysistemplate.yaml` | `AnalysisRun` : provider **web** appelant `/readyz` (pas de Job, pas de RBAC, pas de Prometheus) |
+| `app.forceUnhealthy` (valeur Helm) | levier de démo : force `/readyz` à renvoyer 503 |
 
 Voir aussi [`BEST_PRACTICES.md`](./BEST_PRACTICES.md) et l'ADR
 [`0004-argo-rollouts-canary-deployment.md`](../../adr/0004-argo-rollouts-canary-deployment.md).

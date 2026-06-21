@@ -1,0 +1,84 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "sample-app.fullname" . }}
+  labels:
+    {{- include "sample-app.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "sample-app.selectorLabels" . | nindent 6 }}
+  # A canary that never reaches Ready (broken image / failing /up) keeps the
+  # Rollout Progressing; Argo Rollouts marks it Degraded past this deadline.
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  strategy:
+    canary:
+      # Background analysis (/readyz HTTP health) decides promotion vs rollback.
+      analysis:
+        startingStep: {{ .Values.canary.analysis.startingStep }}
+        templates:
+          - templateName: {{ include "sample-app.fullname" . }}-app-health
+        args:
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Latest
+      steps:
+        {{- toYaml .Values.canary.steps | nindent 8 }}
+  template:
+    metadata:
+      labels:
+        {{- include "sample-app.labels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: false  # Apache requires root to bind port 80
+        fsGroup: 33          # www-data
+      initContainers:
+        # Apply database migrations before the app serves traffic. `migrate` is
+        # idempotent — already-applied migrations are skipped — so it is safe to
+        # run on every rollout and scale-up.
+        - name: migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["php", "artisan", "migrate", "--force"]
+          env:
+            {{- include "sample-app.env" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          env:
+            {{- include "sample-app.env" . | nindent 12 }}
+          # Liveness stays on "/" (process/Apache alive). Tying it to the DB
+          # would kill every pod in a cascade if MySQL blips.
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          # Readiness hits the /readyz endpoint, which checks the DB (and honours
+          # the forceUnhealthy demo flag) and returns JSON. A broken release
+          # never becomes Ready; the same endpoint backs the canary analysis.
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}

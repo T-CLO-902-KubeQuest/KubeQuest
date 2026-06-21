@@ -3,8 +3,9 @@
 # Unlike the other workloads (which sync rendered manifests from this Git repo),
 # this Application installs the Helm chart published to GHCR as an OCI artifact
 # by .github/workflows/sample-app-build.yml. The chart and image share the same
-# semver, so a targetRevision range tracks both (see the source.targetRevision
-# note below for how new releases roll out automatically).
+# semver, so a targetRevision range tracks both (see the targetRevision note in
+# the OCI source below for how new releases roll out automatically). Values are
+# split into a second (Git ref) source; see the `sources` block.
 #
 # Secrets (APP_KEY, DB_PASSWORD) are NOT passed here — they live in a Secret
 # created out-of-band on the cluster (never committed). The chart's
@@ -26,33 +27,30 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  source:
+  # Multi-source: the chart comes from the OCI registry, while its
+  # deployment-time values come from this Git repo (the `ref` source). Keeping
+  # the values in a versioned file (argocd/apps/sample-app/values.yaml) makes
+  # them diffable on their own instead of living inline here.
+  sources:
     # OCI registry hosting the chart (no chart name in the URL).
-    repoURL: ghcr.io/t-clo-902-kubequest/kubequest/charts
-    chart: sample-app
-    # Semver range, not a fixed pin: Argo CD resolves it against the OCI tags on
-    # each refresh and pulls the newest published chart that matches, so CI
-    # releases roll out automatically (selfHeal syncs them). Chart and image
-    # share the same semver, so this upgrades both. Capped below 1.0.0 to keep
-    # a potential breaking major out of the automatic rollout.
-    targetRevision: ">=0.2.0 <1.0.0"
-    helm:
-      valuesObject:
-        app:
-          # Read APP_KEY / DB_PASSWORD from this pre-existing cluster Secret so
-          # no secret material is committed to Git.
-          existingSecret: sample-app
-        db:
-          # MySQL runs in the "mysql" namespace; the app in "sample-app". The
-          # short name "mysql" only resolves within the same namespace, so use
-          # the cross-namespace FQDN.
-          host: mysql.mysql.svc.cluster.local
-          # Match the database/user the MySQL chart actually provisions
-          # (helm/mysql/values.yaml: auth.database/username = "laravel").
-          # The password lives in the existingSecret above (copied from
-          # mysql/mysql-credentials).
-          database: laravel
-          username: laravel
+    - repoURL: ghcr.io/t-clo-902-kubequest/kubequest/charts
+      chart: sample-app
+      # Semver range, not a fixed pin: Argo CD resolves it against the OCI tags
+      # on each refresh and pulls the newest published chart that matches, so CI
+      # releases roll out automatically (selfHeal syncs them). Chart and image
+      # share the same semver, so this upgrades both. Capped below 1.0.0 to keep
+      # a potential breaking major out of the automatic rollout.
+      targetRevision: ">=0.2.0 <1.0.0"
+      helm:
+        # Layered on top of the chart's baked-in defaults. $values resolves to
+        # the `ref: values` source below.
+        valueFiles:
+          - $values/argocd/apps/sample-app/values.yaml
+    # Git repo, used only as a value source (no path => nothing is deployed
+    # from it). targetRevision tracks main so values changes sync on commit.
+    - repoURL: https://github.com/T-CLO-902-KubeQuest/KubeQuest.git
+      targetRevision: main
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: sample-app

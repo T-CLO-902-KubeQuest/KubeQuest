@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ include "sample-app.fullname" . }}-app-health
+  labels:
+    {{- include "sample-app.labels" . | nindent 4 }}
+spec:
+  metrics:
+    - name: app-health
+      # Give the canary time to boot and pass its readinessProbe before the
+      # first measurement, so a healthy-but-still-starting canary is not failed.
+      initialDelay: 30s
+      interval: 15s
+      count: 4
+      # /readyz must answer 200 with {"healthy":true}. failureLimit tolerates a
+      # transient blip; a broken release (forceUnhealthy / DB down => 503) fails
+      # every probe and, once the limit is exceeded, fails the AnalysisRun -> the
+      # Rollout aborts and rolls back to the stable ReplicaSet.
+      # Note: a non-2xx (503) is reported by the web provider as a measurement
+      # error before the body is parsed, which also fails the run.
+      successCondition: "result == true"
+      failureLimit: 2
+      provider:
+        # Hit the DB-backed /readyz endpoint directly over HTTP. No Job, no
+        # RBAC, no kubectl image: the measurement is the real application health
+        # signal. The Service fronts all pods, but forceUnhealthy / a broken
+        # image affects every pod, so a bad release is reflected here.
+        web:
+          url: http://{{ include "sample-app.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local/readyz
+          timeoutSeconds: 5
+          jsonPath: "{$.healthy}"

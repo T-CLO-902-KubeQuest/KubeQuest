@@ -1,0 +1,77 @@
+# kube-prometheus-stack — couche métriques du cluster.
+#
+# Pattern vendoré (comme MySQL, Cilium, Argo CD) :
+#   helm template -> k8s/monitoring/monitoring.yaml  (voir k8s/monitoring/README.md)
+# Jamais `helm install`. Toute modif = un diff reviewable à côté de ces values.
+#
+# Décisions de ce ticket :
+#   - Grafana désactivé : la visualisation est un ticket séparé qui *consomme*
+#     ces métriques (Prometheus est exposé en interne, voir le README).
+#   - Stockage emptyDir + rétention courte : VMs limitées et éteintes le soir.
+#   - Stack lourde épinglée sur le nœud monitoring dédié (label workload=monitoring).
+
+# --- Hors scope : visualisation et alerting (économie de ressources) ---
+grafana:
+  enabled: false
+alertmanager:
+  enabled: false
+
+# --- Prometheus Operator (fournit les CRD ServiceMonitor / PodMonitor) ---
+prometheusOperator:
+  nodeSelector:
+    workload: monitoring
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# --- Prometheus ---
+prometheus:
+  prometheusSpec:
+    # Rétention bornée par le temps (pas de PVC à dimensionner).
+    retention: 24h
+
+    # Stockage éphémère : aucun storageSpec => le chart monte un emptyDir.
+    # L'historique est perdu au restart du pod — acceptable pour la démo.
+
+    # Ordonnancement sur le nœud dédié.
+    nodeSelector:
+      workload: monitoring
+
+    # CLÉ pour « scraper les apps qui déclarent des endpoints » : par défaut
+    # Prometheus ne sélectionne que les ServiceMonitor portant le label de la
+    # release Helm. On élargit pour qu'il découvre AUSSI ceux des apps.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+# --- kube-state-metrics : état des objets k8s (deployments, pods, …) ---
+kube-state-metrics:
+  nodeSelector:
+    workload: monitoring
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# --- node-exporter : DaemonSet. Doit tourner sur TOUS les nœuds (y compris le
+#     master taint NoSchedule) pour remonter les métriques de chaque nœud.
+#     => PAS de nodeSelector ici, et une tolération large. ---
+prometheus-node-exporter:
+  tolerations:
+    - operator: Exists

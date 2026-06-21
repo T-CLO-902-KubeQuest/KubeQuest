@@ -1,0 +1,22 @@
+# Restricted security: container root filesystems must be read-only.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-read-only-root-fs
+spec:
+  rules:
+    - name: check-read-only-root-fs
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        failureAction: Audit
+        message: "Every container must set securityContext.readOnlyRootFilesystem to true."
+        pattern:
+          spec:
+            containers:
+              - name: "*"
+                securityContext:
+                  readOnlyRootFilesystem: "true"

@@ -1,0 +1,33 @@
+# Supply chain: forbid untagged images and the mutable ':latest' tag.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+spec:
+  rules:
+    - name: require-image-tag
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        failureAction: Audit
+        message: "An explicit image tag is required (untagged images are not allowed)."
+        pattern:
+          spec:
+            containers:
+              - image: "*:*"
+    - name: disallow-latest-tag
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        failureAction: Audit
+        message: "Using the mutable ':latest' tag is not allowed."
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"

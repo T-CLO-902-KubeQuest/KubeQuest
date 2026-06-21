@@ -1,0 +1,20 @@
+# Restricted security: pods must declare they run as a non-root user.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-run-as-non-root
+spec:
+  rules:
+    - name: check-run-as-non-root
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        failureAction: Audit
+        message: "Pods must set spec.securityContext.runAsNonRoot to true."
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: "true"

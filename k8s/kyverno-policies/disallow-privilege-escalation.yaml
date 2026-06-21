@@ -1,0 +1,26 @@
+# Baseline security: allowPrivilegeEscalation must be explicitly false.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-privilege-escalation
+spec:
+  rules:
+    - name: check-privilege-escalation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        failureAction: Audit
+        message: "allowPrivilegeEscalation must be set to false on every container."
+        pattern:
+          spec:
+            =(initContainers):
+              - name: "*"
+                securityContext:
+                  allowPrivilegeEscalation: "false"
+            containers:
+              - name: "*"
+                securityContext:
+                  allowPrivilegeEscalation: "false"

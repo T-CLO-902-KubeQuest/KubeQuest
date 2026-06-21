@@ -14,11 +14,11 @@ spec:
   progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
   strategy:
     canary:
-      # Background analysis (pod-readiness ratio) decides promotion vs rollback.
+      # Background analysis (/readyz HTTP health) decides promotion vs rollback.
       analysis:
         startingStep: {{ .Values.canary.analysis.startingStep }}
         templates:
-          - templateName: {{ include "sample-app.fullname" . }}-pods-ready
+          - templateName: {{ include "sample-app.fullname" . }}-app-health
         args:
           - name: canary-hash
             valueFrom:

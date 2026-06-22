@@ -11,16 +11,16 @@
 # Chart épinglé : 7.0.0 (app version 3.6.7).
 #
 # Mode SingleBinary : un seul pod, pas de HA — cluster Epitech contraint.
-# Stockage filesystem sur emptyDir + rétention 24h : disque borné, VMs éteintes
-# le soir. Les logs déjà ingérés survivent au redémarrage des pods *applicatifs*
-# (Loki les a persistés indépendamment) ; ils sont perdus si le pod *Loki* lui-même
-# redémarre — compromis assumé pour la démo.
+# Le rootfs du conteneur est read-only, donc /var/loki DOIT être un volume monté :
+# on active la persistance sur un petit PVC local-path (5Gi, borné), comme MySQL.
+# Bonus : les logs survivent aussi au redémarrage du pod Loki lui-même (#15).
+# Rétention 24h pour borner l'espace disque sur les VMs éteintes le soir.
 deploymentMode: SingleBinary
 
 loki:
   auth_enabled: false
 
-  # Configuration du stockage éphémère local (filesystem)
+  # Configuration du stockage local (filesystem) sur le PVC monté à path_prefix.
   storage:
     type: filesystem
     bucketNames:
@@ -40,11 +40,17 @@ loki:
           prefix: index_
           period: 24h
 
-# Configuration de l'unique pod généré (SingleBinary)
+  # Rétention des logs fixée à 24 heures pour économiser l'espace disque des VMs AWS
+  limits_config:
+    retention_period: 24h
+
+# L'unique pod (SingleBinary), épinglé sur le nœud monitoring avec son PVC.
 singleBinary:
   replicas: 1
   persistence:
-    enabled: false
+    enabled: true
+    storageClass: local-path
+    size: 5Gi
   nodeSelector:
     workload: monitoring
 
@@ -55,6 +61,20 @@ read:
 write:
   replicas: 0
 
-# Rétention des logs fixée à 24 heures pour économiser l'espace disque des VMs AWS
-limits_config:
-  retention_period: 24h
+# Composants annexes du chart désactivés : inutiles en SingleBinary sur un
+# cluster contraint, et la gateway/caches alourdissaient le déploiement.
+gateway:
+  enabled: false
+lokiCanary:
+  enabled: false
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+test:
+  enabled: false
+monitoring:
+  selfMonitoring:
+    enabled: false
+  serviceMonitor:
+    enabled: false

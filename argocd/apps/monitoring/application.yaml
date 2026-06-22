@@ -22,7 +22,9 @@ spec:
     directory:
       # monitoring.yaml = stack rendue ; example-app.yaml = témoin instrumenté
       # (Deployment + Service + ServiceMonitor) pour le 2e critère d'acceptation.
-      include: "{monitoring.yaml,example-app.yaml,loki.yaml,promtail.yaml}"
+      # loki.yaml/promtail.yaml = agrégation de logs (#15) ; grafana-ingress.yaml
+      # = exposition Grafana (#14) ; loki-dashboard.yaml = dashboard logs custom.
+      include: "{monitoring.yaml,example-app.yaml,loki.yaml,promtail.yaml,grafana-ingress.yaml,loki-dashboard.yaml}"
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

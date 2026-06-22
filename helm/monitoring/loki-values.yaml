@@ -1,0 +1,60 @@
+# Loki — agrégation de logs (issue #15). Vendoré comme le reste de la stack.
+# Jamais `helm install`. Régénérer le manifest avec :
+#   helm repo add grafana https://grafana.github.io/helm-charts
+#   helm repo update grafana
+#   helm template loki grafana/loki \
+#     --version 7.0.0 \
+#     --namespace monitoring \
+#     --values helm/monitoring/loki-values.yaml \
+#     > k8s/monitoring/loki.yaml
+#
+# Chart épinglé : 7.0.0 (app version 3.6.7).
+#
+# Mode SingleBinary : un seul pod, pas de HA — cluster Epitech contraint.
+# Stockage filesystem sur emptyDir + rétention 24h : disque borné, VMs éteintes
+# le soir. Les logs déjà ingérés survivent au redémarrage des pods *applicatifs*
+# (Loki les a persistés indépendamment) ; ils sont perdus si le pod *Loki* lui-même
+# redémarre — compromis assumé pour la démo.
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+
+  # Configuration du stockage éphémère local (filesystem)
+  storage:
+    type: filesystem
+    bucketNames:
+      chunks: chunks
+
+  commonConfig:
+    replication_factor: 1
+    path_prefix: /var/loki
+
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+
+# Configuration de l'unique pod généré (SingleBinary)
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: false
+  nodeSelector:
+    workload: monitoring
+
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+
+# Rétention des logs fixée à 24 heures pour économiser l'espace disque des VMs AWS
+limits_config:
+  retention_period: 24h

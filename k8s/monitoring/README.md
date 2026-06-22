@@ -27,17 +27,52 @@ node-exporter + kubelet. A `ServiceMonitor` is only for metrics an *application*
 emits itself.
 
 ### Out of scope
-- **Logs.** Prometheus is a *metrics* system (numeric time series) — it does not
-  collect logs. Logs need a separate stack (**Loki** + Promtail/Alloy, or EFK).
-  Loki is the natural companion (same Grafana) and is left as a follow-up.
 - **Full control-plane metrics.** `kube-apiserver` and `kubelet` are scraped
   out-of-the-box. `kube-scheduler`, `kube-controller-manager` and `etcd` bind
   their `/metrics` to `127.0.0.1` by default and are **not** scraped. Exposing
   them requires `bind-address: 0.0.0.0` (+ etcd `listen-metrics-urls`) in the
   control-plane static pods, i.e. a deliberate change to the Ansible
   `control-plane` role (kubeadm v1beta4 on k8s 1.33). Deferred to its own ticket.
-- **Grafana / Alertmanager.** Disabled in `values.yaml`. Visualization is a
-  separate ticket that *consumes* these metrics; no alerting is requested.
+- **Alertmanager.** Disabled in `values.yaml` — no alerting is requested for now.
+
+## Visualization & logs (Grafana + Loki + Promtail)
+Grafana (issue #14) and the log stack (issue #15) ship alongside the metrics:
+
+- **Grafana** is enabled in `values.yaml`, scheduled on the monitoring node, and
+  exposed at `https://grafana.kubequest.epitech.beer` (see *Access* below). It is
+  authenticated through the cluster's **Dex OIDC** chain (`generic_oauth`), not a
+  hardcoded admin password. Datasources (Prometheus + Loki) and the bundled
+  Kubernetes dashboards are auto-provisioned via the Grafana sidecar.
+- **Loki** (`grafana/loki`, SingleBinary) aggregates logs;
+  **Promtail** (`grafana/promtail`, DaemonSet on every node) ships them.
+  Both are vendored like the metrics stack — see the regeneration commands in
+  `helm/monitoring/loki-values.yaml` and `helm/monitoring/promtail-values.yaml`.
+  Retention is bounded to **24h** on `emptyDir`, consistent with the metrics side.
+- **`loki-dashboard.yaml`** is a custom dashboard (ConfigMap labelled
+  `grafana_dashboard`) with a Loki logs panel, proving logs are queryable from the
+  visualization layer per issue #15.
+
+### Secrets (out of Git)
+Like MySQL/Dex, Grafana's secrets are created manually and never committed.
+Create them in the `monitoring` namespace before Argo CD syncs:
+
+```sh
+kubectl create namespace monitoring   # if it does not exist yet
+
+# Fallback admin account (login form is kept enabled as a backup to OIDC):
+kubectl create secret generic grafana-admin -n monitoring \
+  --from-literal=admin-user=admin \
+  --from-literal=admin-password="$(openssl rand -base64 24)"
+
+# OIDC client secret — same value as the `grafana` key of the dex-clients secret.
+# The key MUST be named exactly GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET (the chart
+# mounts it as an env var, expanded by ${...} in grafana.ini).
+kubectl create secret generic grafana-oidc -n monitoring \
+  --from-literal=GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET="<same as dex-clients/grafana>"
+```
+
+The Dex client `grafana` and its redirectURI are already declared in
+`helm/dex/values.yaml` — no Dex change is needed.
 
 ## Design: vendored manifest
 Like Cilium, Argo CD, cert-manager and MySQL, the stack is installed from a
@@ -99,11 +134,16 @@ the monitoring node would lose the other nodes' metrics.
 > reproducible if the cluster is recreated.
 
 ## Access (not public without auth)
-Prometheus is exposed only as a **ClusterIP** Service — no Ingress. The
-visualization layer scrapes it in-cluster at
-`http://kube-prometheus-stack-prometheus.monitoring.svc:9090`. If a human needs
-the UI from outside, route it through the existing **oauth2-proxy + Dex** chain
-like the other UIs — never a bare public Ingress.
+**Prometheus** stays internal: a **ClusterIP** Service, no Ingress. Grafana
+scrapes it in-cluster at
+`http://kube-prometheus-stack-prometheus.monitoring.svc:9090`.
+
+**Grafana** is the single human entry point, exposed at
+`https://grafana.kubequest.epitech.beer` (`k8s/monitoring/grafana-ingress.yaml`,
+`ingressClassName: nginx`, TLS via `letsencrypt-prod`). Unlike the other UIs it
+authenticates users itself through Dex (`generic_oauth`) rather than delegating
+to oauth2-proxy's nginx `auth_request` — so its Ingress carries no auth-url
+annotations. The Dex client `grafana` already exists in `helm/dex/values.yaml`.
 
 ## Deployment
 Managed by GitOps: the `Application` at `argocd/apps/monitoring/application.yaml`
@@ -112,11 +152,15 @@ uses `ServerSideApply=true` because the operator CRDs exceed the 262144-byte
 client-side apply annotation limit (same as cert-manager / argocd). No manual
 `kubectl apply`.
 
-The `Application` includes two files:
-- `monitoring.yaml` — the rendered stack (operator, Prometheus, exporters, rules).
+The `Application` includes these files:
+- `monitoring.yaml` — the rendered stack (operator, Prometheus, Grafana,
+  exporters, rules, bundled dashboards).
 - `example-app.yaml` — a demonstration fixture (Deployment + Service +
   ServiceMonitor) proving an instrumented app pod is auto-scraped. Replace/extend
   with real instrumentation of the Laravel `sample-app` later.
+- `loki.yaml` / `promtail.yaml` — the rendered log aggregation stack (#15).
+- `grafana-ingress.yaml` — exposes Grafana via Ingress (#14).
+- `loki-dashboard.yaml` — the custom Loki logs dashboard (#15).
 
 ## Verifying the acceptance criteria
 After sync (and the node label applied):

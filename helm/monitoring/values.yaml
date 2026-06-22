@@ -5,14 +5,80 @@
 # Jamais `helm install`. Toute modif = un diff reviewable à côté de ces values.
 #
 # Décisions de ce ticket :
-#   - Grafana désactivé : la visualisation est un ticket séparé qui *consomme*
-#     ces métriques (Prometheus est exposé en interne, voir le README).
+#   - Grafana activé : visualisation des métriques et logs (issue #14). Exposé
+#     via Ingress (grafana.kubequest.epitech.beer) et authentifié par OIDC Dex
+#     — pas d'admin par défaut. Alertmanager reste hors scope.
 #   - Stockage emptyDir + rétention courte : VMs limitées et éteintes le soir.
 #   - Stack lourde épinglée sur le nœud monitoring dédié (label workload=monitoring).
 
-# --- Hors scope : visualisation et alerting (économie de ressources) ---
+# --- Scope : Visualisation (Grafana, OIDC Dex) — alerting hors scope ---
 grafana:
-  enabled: false
+  enabled: true
+
+  # Ordonnancement sur le nœud dédié monitoring
+  nodeSelector:
+    workload: monitoring
+
+  # Rétention et stockage temporaire (emptyDir pour la démo)
+  persistence:
+    enabled: false
+
+  # Compte admin de secours : credentials hors-Git, comme MySQL/Dex
+  # (voir k8s/monitoring/README.md). L'accès humain normal passe par OIDC Dex.
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+
+  # client_secret OIDC injecté hors-Git : le chart monte toutes les clés de ce
+  # Secret en variables d'env, d'où l'expansion ${GF_...} dans grafana.ini.
+  envFromSecret: grafana-oidc
+
+  grafana.ini:
+    server:
+      # URL publique : obligatoire pour les redirects OIDC.
+      root_url: https://grafana.kubequest.epitech.beer
+    auth:
+      # On garde le formulaire de login pour le compte admin de secours ;
+      # l'accès normal est OIDC (exigé par #14 : « pas l'admin par défaut »).
+      disable_login_form: false
+    auth.generic_oauth:
+      enabled: true
+      name: Dex
+      allow_sign_up: true
+      client_id: grafana
+      client_secret: ${GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET}
+      scopes: "openid profile email groups"
+      auth_url: https://dex.kubequest.epitech.beer/auth
+      token_url: https://dex.kubequest.epitech.beer/token
+      api_url: https://dex.kubequest.epitech.beer/userinfo
+      # Tout membre autorisé par Dex (org GitHub) devient Editor.
+      role_attribute_path: "'Editor'"
+
+  # Datasources auto-provisionnées : Prometheus + Alertmanager viennent du
+  # chart, on ajoute Loki (issue #15). Le sidecar les charge via ConfigMap.
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      # uid figé : le dashboard logs custom (k8s/monitoring/loki-dashboard.yaml)
+      # référence cet uid pour se brancher de façon déterministe.
+      uid: loki
+      access: proxy
+      url: http://loki.monitoring.svc.cluster.local:3100
+      version: 1
+      editable: false
+
+  # Sidecar : découvre les ConfigMaps de dashboards/datasources du namespace
+  # (label grafana_dashboard / grafana_datasource) — dont le dashboard logs custom.
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: monitoring
+    datasources:
+      enabled: true
+      label: grafana_datasource
+
 alertmanager:
   enabled: false
 

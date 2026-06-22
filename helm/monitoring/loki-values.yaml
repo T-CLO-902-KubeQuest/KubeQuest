@@ -1,3 +1,20 @@
+# Loki — agrégation de logs (issue #15). Vendoré comme le reste de la stack.
+# Jamais `helm install`. Régénérer le manifest avec :
+#   helm repo add grafana https://grafana.github.io/helm-charts
+#   helm repo update grafana
+#   helm template loki grafana/loki \
+#     --version 7.0.0 \
+#     --namespace monitoring \
+#     --values helm/monitoring/loki-values.yaml \
+#     > k8s/monitoring/loki.yaml
+#
+# Chart épinglé : 7.0.0 (app version 3.6.7).
+#
+# Mode SingleBinary : un seul pod, pas de HA — cluster Epitech contraint.
+# Stockage filesystem sur emptyDir + rétention 24h : disque borné, VMs éteintes
+# le soir. Les logs déjà ingérés survivent au redémarrage des pods *applicatifs*
+# (Loki les a persistés indépendamment) ; ils sont perdus si le pod *Loki* lui-même
+# redémarre — compromis assumé pour la démo.
 deploymentMode: SingleBinary
 
 loki:

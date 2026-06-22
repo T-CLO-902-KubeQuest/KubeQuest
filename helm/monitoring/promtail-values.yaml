@@ -1,6 +1,19 @@
-# Promtail - Collecteur de logs à déployer sur tous les nœuds
+# Promtail — collecteur de logs (issue #15), DaemonSet sur tous les nœuds.
+# Vendoré comme le reste. Régénérer le manifest avec :
+#   helm repo add grafana https://grafana.github.io/helm-charts
+#   helm repo update grafana
+#   helm template promtail grafana/promtail \
+#     --version 6.17.1 \
+#     --namespace monitoring \
+#     --values helm/monitoring/promtail-values.yaml \
+#     > k8s/monitoring/promtail.yaml
+#
+# Chart épinglé : 6.17.1 (app version 3.5.1).
 config:
-  lokiAddress: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+  # Service Loki en mode SingleBinary (pas de gateway séparée). Le défaut du
+  # chart pointe vers `loki-gateway`, qui n'existe pas ici — d'où l'override.
+  clients:
+    - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
 
 # Pas de nodeSelector ici car il doit collecter TOUS les nœuds (control-plane + workers)
 tolerations:

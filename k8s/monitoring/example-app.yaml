@@ -27,7 +27,9 @@ spec:
       containers:
         - name: example-app
           # Petit exporter de référence : sert /metrics sur :8080.
-          image: quay.io/brancz/prometheus-example-app:v0.5.0
+          # v0.6.0 = première image multi-arch (les nœuds AWS sont en arm64 ;
+          # v0.5.0 était amd64-only -> CrashLoopBackOff exit 255).
+          image: quay.io/brancz/prometheus-example-app:v0.6.0
           ports:
             - name: metrics
               containerPort: 8080

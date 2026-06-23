@@ -15,3 +15,4 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('counter/add', [CounterController::class, 'add']);
 Route::get('counter/count', [CounterController::class, 'get']);
+Route::get('counter/stats', [CounterController::class, 'stats']);

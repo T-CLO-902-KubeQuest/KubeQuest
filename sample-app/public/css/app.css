@@ -34,11 +34,49 @@ body {
     animation: bgdrift 18s ease-in-out infinite;
     min-height: 100vh;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    /* Centrage via margin:auto sur l'enfant en flux (scroll-safe : ne coupe pas le haut). */
     color: var(--text);
     overflow-x: hidden;
     padding: 24px;
+}
+
+/* Conteneur du tableau de bord */
+.page {
+    margin: auto;
+    width: 100%;
+    max-width: 1120px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+/* Disposition 3 colonnes : classement | clic | succès */
+.layout {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 1fr;
+    gap: 18px;
+    align-items: start;
+}
+
+/* Panneaux latéraux (réutilisent le style carte) */
+.panel {
+    background: var(--glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-brd);
+    border-radius: 24px;
+    padding: 22px 20px;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.panel__title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    text-align: center;
 }
 
 @keyframes bgdrift {
@@ -73,6 +111,12 @@ body {
         0 25px 60px rgba(0, 0, 0, 0.5),
         inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
+
+/* Carte centrale : remplit sa colonne dans la grille */
+.arena.center { max-width: none; }
+
+/* Cartes d'auth : centrées dans le body (scroll-safe) */
+.auth-card { margin: auto; }
 
 .arena.shake { animation: shake 0.32s cubic-bezier(.36,.07,.19,.97); }
 .arena.shake--big { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97); }
@@ -282,7 +326,7 @@ body {
 }
 .badges {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
     gap: 10px;
 }
 .badge {
@@ -375,6 +419,20 @@ body {
 @keyframes toastIn  { to { transform: translateY(0); opacity: 1; } }
 @keyframes toastOut { to { transform: translateY(-18px); opacity: 0; } }
 
+/* =============================================
+   Responsive : empilage 1 colonne, le clic d'abord
+   ============================================= */
+@media (max-width: 880px) {
+    .layout {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    /* Le panneau central (le clic) passe en premier, on scrolle pour le reste. */
+    .arena.center { order: -1; }
+    .side-lb { order: 1; }
+    .side-ach { order: 2; }
+}
+
 /* Accessibilité : mouvement réduit */
 @media (prefers-reduced-motion: reduce) {
     body { animation: none; }
@@ -391,9 +449,12 @@ body {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    margin-bottom: 16px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--glass-brd);
+    padding: 12px 18px;
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-brd);
+    border-radius: 16px;
 }
 .user-chip {
     font-weight: 700;

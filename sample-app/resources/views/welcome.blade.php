@@ -14,8 +14,8 @@
         <!-- Calque confettis plein écran -->
         <canvas id="fx" aria-hidden="true"></canvas>
 
-        <main class="arena">
-            <!-- Barre utilisateur -->
+        <div class="page">
+            <!-- Barre utilisateur (pleine largeur) -->
             <div class="topbar">
                 <span class="user-chip">👤 {{ $userName }}</span>
                 <form method="POST" action="/logout" class="logout-form">
@@ -24,53 +24,53 @@
                 </form>
             </div>
 
-            <!-- En-tête : rang + niveau -->
-            <header class="hud">
-                <div class="rank">
-                    <span class="rank-icon" id="rank-icon">🥚</span>
-                    <span class="rank-title" id="rank-title">Novice du Clic</span>
-                </div>
-                <button id="mute" class="mute" type="button" aria-label="Couper le son" aria-pressed="false">🔊</button>
-            </header>
+            <div class="layout">
+                <!-- Gauche : classement -->
+                <aside class="panel side-lb" aria-label="Classement">
+                    <h2 class="panel__title">Classement</h2>
+                    <ol class="lb-list" id="leaderboard"></ol>
+                </aside>
 
-            <!-- Barre d'XP -->
-            <div class="xp">
-                <div class="xp-head">
-                    <span class="level-badge">Niv. <b id="level">0</b></span>
-                    <span class="xp-text"><span id="xp-into">0</span> / <span id="xp-need">10</span> XP</span>
-                </div>
-                <div class="xp-track"><div class="xp-fill" id="xp-fill"></div></div>
+                <!-- Centre : le clic -->
+                <main class="arena center">
+                    <header class="hud">
+                        <div class="rank">
+                            <span class="rank-icon" id="rank-icon">🥚</span>
+                            <span class="rank-title" id="rank-title">Novice du Clic</span>
+                        </div>
+                        <button id="mute" class="mute" type="button" aria-label="Couper le son" aria-pressed="false">🔊</button>
+                    </header>
+
+                    <div class="xp">
+                        <div class="xp-head">
+                            <span class="level-badge">Niv. <b id="level">0</b></span>
+                            <span class="xp-text"><span id="xp-into">0</span> / <span id="xp-need">10</span> XP</span>
+                        </div>
+                        <div class="xp-track"><div class="xp-fill" id="xp-fill"></div></div>
+                    </div>
+
+                    <p class="counter-label">Tes clics</p>
+                    <p id="value" aria-live="polite" aria-atomic="true">{{ $value }}</p>
+
+                    <button id="add" class="add-btn" type="button">
+                        <span class="add-btn__plus">+1</span>
+                        <span class="add-btn__glow" aria-hidden="true"></span>
+                    </button>
+
+                    <div class="ministats">
+                        <div class="ministat"><span class="ministat__num" id="stat-today">0</span><span class="ministat__lbl">aujourd'hui</span></div>
+                        <div class="ministat"><span class="ministat__num" id="stat-cpm">0</span><span class="ministat__lbl">clics/min</span></div>
+                        <div class="ministat"><span class="ministat__num" id="stat-age">—</span><span class="ministat__lbl">âge</span></div>
+                    </div>
+                </main>
+
+                <!-- Droite : succès -->
+                <aside class="panel side-ach" aria-label="Succès">
+                    <h2 class="panel__title">Succès</h2>
+                    <div class="badges" id="badges"></div>
+                </aside>
             </div>
-
-            <!-- Compteur -->
-            <p class="counter-label">Tes clics</p>
-            <p id="value" aria-live="polite" aria-atomic="true">{{ $value }}</p>
-
-            <!-- Bouton magique -->
-            <button id="add" class="add-btn" type="button">
-                <span class="add-btn__plus">+1</span>
-                <span class="add-btn__glow" aria-hidden="true"></span>
-            </button>
-
-            <!-- Mini-stats -->
-            <div class="ministats">
-                <div class="ministat"><span class="ministat__num" id="stat-today">0</span><span class="ministat__lbl">aujourd'hui</span></div>
-                <div class="ministat"><span class="ministat__num" id="stat-cpm">0</span><span class="ministat__lbl">clics/min</span></div>
-                <div class="ministat"><span class="ministat__num" id="stat-age">—</span><span class="ministat__lbl">âge</span></div>
-            </div>
-
-            <!-- Vitrine d'achievements -->
-            <section class="achievements" aria-label="Succès">
-                <h2 class="achievements__title">Succès</h2>
-                <div class="badges" id="badges"></div>
-            </section>
-
-            <!-- Classement -->
-            <section class="leaderboard" aria-label="Classement">
-                <h2 class="achievements__title">Classement</h2>
-                <ol class="lb-list" id="leaderboard"></ol>
-            </section>
-        </main>
+        </div>
 
         <!-- Région des toasts -->
         <div class="toasts" id="toasts" aria-live="assertive" aria-atomic="false"></div>

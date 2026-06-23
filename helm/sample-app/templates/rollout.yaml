@@ -31,7 +31,10 @@ spec:
         {{- include "sample-app.labels" . | nindent 8 }}
     spec:
       securityContext:
-        runAsNonRoot: false  # Apache requires root to bind port 80
+        # Apache écoute sur 8080 (port non privilégié), le pod tourne en www-data.
+        runAsNonRoot: true
+        runAsUser: 33        # www-data
+        runAsGroup: 33       # www-data
         fsGroup: 33          # www-data
       initContainers:
         # Apply database migrations before the app serves traffic. `migrate` is
@@ -43,6 +46,11 @@ spec:
           command: ["php", "artisan", "migrate", "--force"]
           env:
             {{- include "sample-app.env" . | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       containers:
@@ -51,7 +59,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: 80
+              containerPort: 8080
               protocol: TCP
           env:
             {{- include "sample-app.env" . | nindent 12 }}
@@ -74,6 +82,11 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 5
             failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       nodeSelector:

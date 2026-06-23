@@ -1,0 +1,21 @@
+# Baseline security: pods must not share the host network/PID/IPC namespaces.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-host-namespaces
+spec:
+  rules:
+    - name: check-host-namespaces
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        failureAction: Audit
+        message: "Sharing the host namespaces (hostNetwork, hostIPC, hostPID) is not allowed."
+        pattern:
+          spec:
+            =(hostNetwork): "false"
+            =(hostIPC): "false"
+            =(hostPID): "false"

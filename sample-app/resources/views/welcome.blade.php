@@ -15,6 +15,15 @@
         <canvas id="fx" aria-hidden="true"></canvas>
 
         <main class="arena">
+            <!-- Barre utilisateur -->
+            <div class="topbar">
+                <span class="user-chip">👤 {{ $userName }}</span>
+                <form method="POST" action="/logout" class="logout-form">
+                    @csrf
+                    <button type="submit" class="logout-btn">Déconnexion</button>
+                </form>
+            </div>
+
             <!-- En-tête : rang + niveau -->
             <header class="hud">
                 <div class="rank">
@@ -34,7 +43,7 @@
             </div>
 
             <!-- Compteur -->
-            <p class="counter-label">Clics totaux</p>
+            <p class="counter-label">Tes clics</p>
             <p id="value" aria-live="polite" aria-atomic="true">{{ $value }}</p>
 
             <!-- Bouton magique -->
@@ -55,12 +64,21 @@
                 <h2 class="achievements__title">Succès</h2>
                 <div class="badges" id="badges"></div>
             </section>
+
+            <!-- Classement -->
+            <section class="leaderboard" aria-label="Classement">
+                <h2 class="achievements__title">Classement</h2>
+                <ol class="lb-list" id="leaderboard"></ol>
+            </section>
         </main>
 
         <!-- Région des toasts -->
         <div class="toasts" id="toasts" aria-live="assertive" aria-atomic="false"></div>
 
-        <script>window.__INITIAL_TOTAL__ = {{ (int) $value }};</script>
+        <script>
+            window.__INITIAL_TOTAL__ = {{ (int) $value }};
+            window.__USER_ID__ = {{ (int) $userId }};
+        </script>
         <script src="/js/app.js" defer></script>
     </body>
 </html>

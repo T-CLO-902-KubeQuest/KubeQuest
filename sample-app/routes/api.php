@@ -13,6 +13,6 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('counter/add', [CounterController::class, 'add']);
+// Total global, public et stateless (pas besoin de session).
+// add/stats/leaderboard sont dans web.php pour accéder à l'utilisateur connecté.
 Route::get('counter/count', [CounterController::class, 'get']);
-Route::get('counter/stats', [CounterController::class, 'stats']);

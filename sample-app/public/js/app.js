@@ -55,8 +55,12 @@
         rankIcon: $("rank-icon"), rankTitle: $("rank-title"),
         today: $("stat-today"), cpm: $("stat-cpm"), age: $("stat-age"),
         badges: $("badges"), toasts: $("toasts"), mute: $("mute"), fx: $("fx"),
+        leaderboard: $("leaderboard"),
         arena: document.querySelector(".arena"),
     };
+
+    const USER_ID = window.__USER_ID__ | 0;
+    const SPEED_KEY = "ca_speed_" + USER_ID; // succès Speed Demon par utilisateur
 
     /* ---------- État ---------- */
     const state = {
@@ -296,7 +300,7 @@
         const now = performance.now();
         const recent = state.clickTimes.filter((t) => now - t < 5000);
         if (recent.length >= 10) {
-            localStorage.setItem("ca_speed", "1");
+            localStorage.setItem(SPEED_KEY, "1");
             unlock(ACHIEVEMENTS.find((a) => a.id === "speed"), true);
         }
     }
@@ -322,6 +326,7 @@
             const res = await fetch("/api/counter/add", { headers: { Accept: "application/json" } });
             const data = await res.json();
             applyTotal(data.value, { fromClick: true });
+            fetchLeaderboard();
         } catch (_) {
             toast("⚠️", "Hors-ligne", "le clic n'a pas été enregistré", "hot");
             state.today = Math.max(0, state.today - 1);
@@ -331,7 +336,7 @@
         }
     }
 
-    /* ---------- Polling (compteur global temps réel) ---------- */
+    /* ---------- Polling (stats personnelles, temps réel) ---------- */
     async function poll() {
         try {
             const res = await fetch("/api/counter/stats", { headers: { Accept: "application/json" } });
@@ -346,6 +351,32 @@
         } catch (_) { /* silencieux */ }
     }
 
+    /* ---------- Classement ---------- */
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, (c) =>
+            ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+    async function fetchLeaderboard() {
+        if (!els.leaderboard) return;
+        try {
+            const res = await fetch("/api/leaderboard", { headers: { Accept: "application/json" } });
+            const data = await res.json();
+            const players = data.players || [];
+            if (!players.length) {
+                els.leaderboard.innerHTML = `<li class="lb-empty">Aucun joueur pour l'instant — sois le premier !</li>`;
+                return;
+            }
+            els.leaderboard.innerHTML = players.map((p, i) => {
+                const me = p.id === data.me ? " lb-row--me" : "";
+                const medal = ["🥇", "🥈", "🥉"][i] || (i + 1);
+                return `<li class="lb-row${me}">` +
+                    `<span class="lb-rank">${medal}</span>` +
+                    `<span class="lb-name">${escapeHtml(p.name)}</span>` +
+                    `<span class="lb-clicks">${p.clicks}</span></li>`;
+            }).join("");
+        } catch (_) { /* silencieux */ }
+    }
+
     /* ---------- Mute ---------- */
     function renderMute() {
         els.mute.textContent = audio.muted ? "🔇" : "🔊";
@@ -356,7 +387,7 @@
     /* ---------- Init ---------- */
     function init() {
         buildBadges();
-        if (localStorage.getItem("ca_speed") === "1") {
+        if (localStorage.getItem(SPEED_KEY) === "1") {
             state.unlocked.add("speed"); markBadge("speed", false);
         }
         applyTotal(state.total, { silent: true, force: true }); // état initial sans célébration
@@ -371,7 +402,9 @@
         // Espace / Entrée déjà gérés nativement par le <button>.
 
         poll();
+        fetchLeaderboard();
         setInterval(poll, 6000);
+        setInterval(fetchLeaderboard, 8000);
         setInterval(renderMiniStats, 1000); // rafraîchit le cpm glissant
     }
 

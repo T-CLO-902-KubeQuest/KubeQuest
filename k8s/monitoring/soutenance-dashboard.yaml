@@ -1,0 +1,189 @@
+# Dashboard Grafana « Soutenance — sample-app (scaling, santé, logs) ».
+#
+# Tableau de bord unique pour la démo live devant le jury (issues #23/#24). Il
+# réunit, pour le namespace applicatif `sample-app`, ce qu'il faut montrer :
+#
+#   - Charge & scaling : nombre de pods Running et replicas du Rollout, pour
+#     voir le scale up/down en direct (HPA #24) ;
+#   - CPU / mémoire vs requests : la charge générée fait monter la conso, ce qui
+#     déclenche le scaling ;
+#   - Santé / canary : phases des pods + restarts, pour visualiser un rollout
+#     canary qui échoue et le rollback automatique (Argo Rollouts) ;
+#   - Logs live : les logs applicatifs via Loki, filtrables.
+#
+# Comme loki-dashboard.yaml, ce dashboard est chargé automatiquement par le
+# sidecar dashboards de Grafana (label grafana_dashboard: "1", namespace
+# monitoring) — aucun import manuel. Datasources : Prometheus (uid "prometheus",
+# défaut du chart kube-prometheus-stack) et Loki (uid "loki").
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: soutenance-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  soutenance.json: |-
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "graphTooltip": 1,
+      "schemaVersion": 39,
+      "tags": ["soutenance", "sample-app", "demo"],
+      "title": "Soutenance - KubeQuest",
+      "uid": "soutenance-sample-app",
+      "time": { "from": "now-15m", "to": "now" },
+      "refresh": "10s",
+      "templating": {
+        "list": [
+          {
+            "name": "namespace",
+            "label": "Namespace",
+            "type": "constant",
+            "query": "sample-app",
+            "current": { "text": "sample-app", "value": "sample-app" },
+            "hide": 2
+          }
+        ]
+      },
+      "panels": [
+        {
+          "type": "row",
+          "title": "Charge & scaling",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+        },
+        {
+          "type": "stat",
+          "title": "Pods Running",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 6, "w": 6, "x": 0, "y": 1 },
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [ { "color": "blue", "value": null } ] } } },
+          "options": { "colorMode": "value", "graphMode": "area", "textMode": "value" },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "count(kube_pod_status_phase{namespace=\"$namespace\", phase=\"Running\"} == 1)",
+              "legendFormat": "running"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Replicas dans le temps (scale up / down)",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 6, "w": 18, "x": 6, "y": 1 },
+          "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "fillOpacity": 10 } } },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "count(kube_pod_status_phase{namespace=\"$namespace\", phase=\"Running\"} == 1)",
+              "legendFormat": "pods running"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum(kube_horizontalpodautoscaler_status_current_replicas{namespace=\"$namespace\"})",
+              "legendFormat": "HPA current"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum(kube_horizontalpodautoscaler_spec_max_replicas{namespace=\"$namespace\"})",
+              "legendFormat": "HPA max"
+            }
+          ]
+        },
+        {
+          "type": "row",
+          "title": "CPU / mémoire vs requests",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 }
+        },
+        {
+          "type": "timeseries",
+          "title": "CPU usage vs requests (cores)",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 10 } } },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", container=\"app\"}[2m]))",
+              "legendFormat": "usage"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum(kube_pod_container_resource_requests{namespace=\"$namespace\", container=\"app\", resource=\"cpu\"})",
+              "legendFormat": "requests total"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Mémoire working set vs limits (bytes)",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "fillOpacity": 10 } } },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\", container=\"app\"})",
+              "legendFormat": "working set"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum(kube_pod_container_resource_limits{namespace=\"$namespace\", container=\"app\", resource=\"memory\"})",
+              "legendFormat": "limits total"
+            }
+          ]
+        },
+        {
+          "type": "row",
+          "title": "Santé & rollback canary",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 }
+        },
+        {
+          "type": "timeseries",
+          "title": "Phases des pods (Running / Pending / Failed)",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+          "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "fillOpacity": 20, "stacking": { "mode": "normal" } } } },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum by (phase) (kube_pod_status_phase{namespace=\"$namespace\"} == 1)",
+              "legendFormat": "{{phase}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Redémarrages de conteneurs (broken release)",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+          "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60 } } },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum by (pod) (increase(kube_pod_container_status_restarts_total{namespace=\"$namespace\"}[5m]))",
+              "legendFormat": "{{pod}}"
+            }
+          ]
+        },
+        {
+          "type": "row",
+          "title": "Logs applicatifs (live)",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 }
+        },
+        {
+          "type": "logs",
+          "title": "Logs sample-app (Loki)",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 26 },
+          "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
+          "targets": [
+            {
+              "datasource": { "type": "loki", "uid": "loki" },
+              "expr": "{namespace=\"$namespace\"}"
+            }
+          ]
+        }
+      ]
+    }

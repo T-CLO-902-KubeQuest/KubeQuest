@@ -37,6 +37,12 @@ resources:
 app:
   env: production
   debug: "false"
+  # Sessions are stored in the database, not on the pod filesystem. With
+  # replicaCount > 1 (and across pod restarts/rescheduling), file-based sessions
+  # live on a single pod's disk and would not be shared, breaking logins behind
+  # the Service load balancing. The `sessions` table is created by the migrate
+  # initContainer.
+  sessionDriver: database
   # APP_KEY must be provided at install time, never committed
   key: ""
   # When set, the chart skips creating its own Secret and the Deployment reads

@@ -62,12 +62,24 @@ hosts {
    18.158.153.65 argocd.kubequest.epitech.beer
    18.158.153.65 headlamp.kubequest.epitech.beer
    18.158.153.65 dex.kubequest.epitech.beer
+   18.158.153.65 grafana.kubequest.epitech.beer
    fallthrough
 }
 ```
 Applied live (CoreDNS is managed by kubeadm, not GitOps) and reloaded with
 `kubectl -n kube-system rollout restart deploy/coredns`. Add a line per new host
 exposed under this domain.
+
+> **One line per exposed host.** `grafana` (issue #14) was added the same way:
+> a public A record at the DNS provider **and** the matching `hosts` line above,
+> otherwise the cert-manager self-check fails with `no such host` while public
+> DNS resolves fine. **Prometheus is intentionally NOT exposed** — it stays a
+> ClusterIP scraped in-cluster by Grafana, so it needs neither an A record nor a
+> `hosts` entry.
+>
+> This block lives in the live `coredns` ConfigMap, **not** in Git — it will not
+> survive a cluster rebuild. GitOps evolution: fold these records into the
+> kubeadm CoreDNS `Corefile` template in the Ansible `control-plane` role.
 
 ## Deployment
 GitOps via three Applications under `argocd/apps`, ordered by sync-wave so the

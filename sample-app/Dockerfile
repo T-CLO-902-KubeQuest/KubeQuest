@@ -32,5 +32,14 @@ RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
 # Activez le module Apache Rewrite
 RUN a2enmod rewrite
 
-# Exposez le port 80
-EXPOSE 80
+# Apache écoute sur un port non privilégié (8080) afin de tourner en non-root
+# et satisfaire les policies Kyverno en mode Enforce (runAsNonRoot, drop ALL caps).
+RUN sed -ri -e 's!^Listen 80$!Listen 8080!' /etc/apache2/ports.conf \
+    && sed -ri -e 's!<VirtualHost \*:80>!<VirtualHost *:8080>!' /etc/apache2/sites-available/*.conf \
+    && chown -R www-data:www-data /var/run/apache2 /var/log/apache2 /var/lib/apache2
+
+# Tournez en tant qu'utilisateur non privilégié www-data.
+USER www-data
+
+# Exposez le port non privilégié
+EXPOSE 8080

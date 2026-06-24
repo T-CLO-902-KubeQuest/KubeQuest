@@ -1,0 +1,76 @@
+# Fixture de démonstration — 2e critère d'acceptation du ticket :
+# « les métriques d'un pod applicatif instrumenté sont scrappées ».
+#
+# Ce n'est PAS un vrai service : juste un témoin minimal qui expose un endpoint
+# /metrics au format Prometheus, plus le ServiceMonitor qui prouve la découverte
+# AUTOMATIQUE par Prometheus (≠ scraping intégré du kubelet).
+#
+# Évolution : remplacer/compléter par l'instrumentation réelle du sample-app
+# Laravel (route /metrics), qui réutilisera le même pattern de ServiceMonitor.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-app
+  namespace: monitoring
+  labels:
+    app: example-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: example-app
+  template:
+    metadata:
+      labels:
+        app: example-app
+    spec:
+      containers:
+        - name: example-app
+          # Petit exporter de référence : sert /metrics sur :8080.
+          # v0.6.0 = première image multi-arch (les nœuds AWS sont en arm64 ;
+          # v0.5.0 était amd64-only -> CrashLoopBackOff exit 255).
+          image: quay.io/brancz/prometheus-example-app:v0.6.0
+          ports:
+            - name: metrics
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-app
+  namespace: monitoring
+  labels:
+    app: example-app
+spec:
+  selector:
+    app: example-app
+  ports:
+    # Le nom du port ('metrics') est référencé par le ServiceMonitor ci-dessous.
+    - name: metrics
+      port: 8080
+      targetPort: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: example-app
+  namespace: monitoring
+  labels:
+    app: example-app
+spec:
+  # Sélectionne le Service par son label : c'est lui que Prometheus va scraper.
+  selector:
+    matchLabels:
+      app: example-app
+  endpoints:
+    # 'port' référence le NOM du port du Service (pas un numéro).
+    - port: metrics
+      path: /metrics
+      interval: 30s

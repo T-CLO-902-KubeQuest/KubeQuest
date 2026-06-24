@@ -27,10 +27,43 @@ Every container declares `resources.requests` and `resources.limits`:
 
 Adjust in `values.yaml` to match the target node capacity.
 
+## Deployment strategy (Argo Rollouts canary)
+
+The chart ships an Argo Rollouts `Rollout` instead of a plain `Deployment`. A new
+release is rolled out as a **canary**: one pod (`setWeight: 50` of `replicaCount: 2`)
+runs the new version while a background `AnalysisRun` polls the app's `/readyz`
+endpoint over HTTP (`templates/analysistemplate.yaml`, web provider — no
+Prometheus, no kubectl Job, no RBAC required).
+
+- If `/readyz` answers `{"healthy":true}` → the canary is **promoted** to 100% → Rollout `Healthy`.
+- If `/readyz` fails (broken image / DB down / forceUnhealthy) → the
+  `AnalysisRun` fails → the Rollout **aborts and rolls back** to the previous
+  stable ReplicaSet automatically.
+
+Tune `canary.steps`, `canary.analysis`, and `progressDeadlineSeconds` in
+`values.yaml`. `progressDeadlineSeconds` must stay greater than the sum of the
+canary pauses, otherwise a slow-but-healthy canary is wrongly marked Degraded.
+
+The Argo Rollouts controller (CRDs) must be installed first; it is deployed by
+`argocd/apps/argo-rollouts/application.yaml` in sync-wave `-1`.
+
 ## Probes
 
-- **readinessProbe** — HTTP GET `/` on port 80, starts after 10 s, checked every 5 s. Prevents traffic from reaching pods that are not ready.
-- **livenessProbe** — HTTP GET `/` on port 80, starts after 30 s, checked every 10 s. Restarts pods that become unresponsive.
+- **readinessProbe** — HTTP GET `/readyz` on port 80, starts after 10 s, checked every 5 s.
+  A JSON endpoint that opens a DB connection, so readiness reflects **real
+  application state**, not just "the process is alive". A canary whose DB check
+  fails never becomes Ready and is rolled back. The same endpoint backs the
+  canary analysis.
+- **livenessProbe** — HTTP GET `/` on port 80, starts after 30 s, checked every 10 s.
+  Kept on `/` (not `/readyz`) on purpose: tying liveness to the DB would restart
+  every pod in a cascade if MySQL blips.
+
+### Demo hook
+
+`app.forceUnhealthy: true` makes `/readyz` return 503 (via the
+`APP_FORCE_UNHEALTHY` env var), so a healthy image can be made to fail readiness
+on demand to demonstrate the automatic canary rollback — no deliberately broken
+image needed.
 
 ## Security context
 

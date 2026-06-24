@@ -1,0 +1,24 @@
+# Stability: every container must define liveness and readiness probes.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-probes
+spec:
+  rules:
+    - name: check-probes
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        failureAction: Audit
+        message: "Liveness and readiness probes are required for every container."
+        pattern:
+          spec:
+            containers:
+              - name: "*"
+                livenessProbe:
+                  periodSeconds: ">0"
+                readinessProbe:
+                  periodSeconds: ">0"

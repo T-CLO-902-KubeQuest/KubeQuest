@@ -1,0 +1,80 @@
+# Loki — agrégation de logs (issue #15). Vendoré comme le reste de la stack.
+# Jamais `helm install`. Régénérer le manifest avec :
+#   helm repo add grafana https://grafana.github.io/helm-charts
+#   helm repo update grafana
+#   helm template loki grafana/loki \
+#     --version 7.0.0 \
+#     --namespace monitoring \
+#     --values helm/monitoring/loki-values.yaml \
+#     > k8s/monitoring/loki.yaml
+#
+# Chart épinglé : 7.0.0 (app version 3.6.7).
+#
+# Mode SingleBinary : un seul pod, pas de HA — cluster Epitech contraint.
+# Le rootfs du conteneur est read-only, donc /var/loki DOIT être un volume monté :
+# on active la persistance sur un petit PVC local-path (5Gi, borné), comme MySQL.
+# Bonus : les logs survivent aussi au redémarrage du pod Loki lui-même (#15).
+# Rétention 24h pour borner l'espace disque sur les VMs éteintes le soir.
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+
+  # Configuration du stockage local (filesystem) sur le PVC monté à path_prefix.
+  storage:
+    type: filesystem
+    bucketNames:
+      chunks: chunks
+
+  commonConfig:
+    replication_factor: 1
+    path_prefix: /var/loki
+
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+
+  # Rétention des logs fixée à 24 heures pour économiser l'espace disque des VMs AWS
+  limits_config:
+    retention_period: 24h
+
+# L'unique pod (SingleBinary), épinglé sur le nœud monitoring avec son PVC.
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 5Gi
+  nodeSelector:
+    workload: monitoring
+
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+
+# Composants annexes du chart désactivés : inutiles en SingleBinary sur un
+# cluster contraint, et la gateway/caches alourdissaient le déploiement.
+gateway:
+  enabled: false
+lokiCanary:
+  enabled: false
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+test:
+  enabled: false
+monitoring:
+  selfMonitoring:
+    enabled: false
+  serviceMonitor:
+    enabled: false

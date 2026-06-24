@@ -30,6 +30,8 @@ initContainer so both connect to the same database.
   value: {{ .Values.app.debug | quote }}
 - name: SESSION_DRIVER
   value: {{ .Values.app.sessionDriver | quote }}
+- name: APP_FORCE_UNHEALTHY
+  value: {{ .Values.app.forceUnhealthy | default false | quote }}
 - name: APP_KEY
   valueFrom:
     secretKeyRef:

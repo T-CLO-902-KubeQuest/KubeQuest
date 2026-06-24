@@ -34,6 +34,27 @@ resources:
     cpu: 500m
     memory: 512Mi
 
+# Argo Rollouts canary strategy. The chart ships a Rollout (not a Deployment),
+# so a new release is rolled out as a canary and promoted only if the analysis
+# (pod-readiness ratio) passes; otherwise it is aborted and rolled back to the
+# previous stable ReplicaSet. See templates/rollout.yaml + analysistemplate.yaml.
+canary:
+  steps:
+    # 1 canary pod out of replicaCount (=2). The analysis runs in background
+    # from step 0 and decides promotion vs rollback.
+    - setWeight: 50
+    - pause:
+        duration: 30s
+  analysis:
+    # Step at which the background AnalysisRun starts (0 = as soon as the canary
+    # ReplicaSet is created).
+    startingStep: 0
+
+# A canary that never becomes Ready (e.g. broken image / failing /up) leaves the
+# Rollout Progressing; past this deadline Argo Rollouts marks it Degraded. Keep
+# it greater than the sum of the canary pauses above.
+progressDeadlineSeconds: 120
+
 app:
   env: production
   debug: "false"
@@ -45,6 +66,10 @@ app:
   sessionDriver: database
   # APP_KEY must be provided at install time, never committed
   key: ""
+  # Demo hook: when true, the /up health endpoint is forced to fail (see
+  # AppServiceProvider DiagnosingHealth listener). Used to demonstrate the
+  # automatic canary rollback without shipping a deliberately broken image.
+  forceUnhealthy: false
   # When set, the chart skips creating its own Secret and the Deployment reads
   # APP_KEY and DB_PASSWORD from this pre-existing Secret instead. Used by the
   # GitOps install so no secret material ever lands in Git.

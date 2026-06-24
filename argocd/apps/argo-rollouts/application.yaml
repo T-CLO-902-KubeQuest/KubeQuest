@@ -1,0 +1,35 @@
+# argo-rollouts (controller + dashboard + CRDs), synced by the root app-of-apps.
+#
+# Wave -1: the Rollout/AnalysisTemplate CRDs must exist before sample-app
+# (wave 1) creates its Rollout, otherwise that sync fails on an unknown kind.
+#
+# Manifests are pre-rendered into k8s/argo-rollouts/argo-rollouts.yaml; see
+# helm/argo-rollouts/values.yaml for the exact `helm template` command.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-rollouts
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/T-CLO-902-KubeQuest/KubeQuest.git
+    targetRevision: main
+    path: k8s/argo-rollouts
+    directory:
+      include: "argo-rollouts.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argo-rollouts
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # CRDs exceed the 262144-byte client-side apply annotation limit.
+      - ServerSideApply=true

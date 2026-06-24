@@ -11,8 +11,29 @@ spec:
           - resources:
               kinds:
                 - Pod
+      # System/infra namespaces host vendored third-party workloads we do not
+      # control (and cannot make fully compliant); Enforce there would block
+      # them. Application namespaces stay enforced (fail-closed: any namespace
+      # not listed here is blocked).
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - argocd
+                - argo-rollouts
+                - monitoring
+                - cert-manager
+                - ingress-nginx
+                - dex
+                - headlamp
+                - oauth2-proxy
+                - local-path-storage
       validate:
-        failureAction: Audit
+        failureAction: Enforce
         message: "Pods must set spec.securityContext.runAsNonRoot to true."
         pattern:
           spec:

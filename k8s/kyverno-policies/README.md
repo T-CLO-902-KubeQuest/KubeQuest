@@ -26,18 +26,24 @@ Each `ClusterPolicy` sets `validate.failureAction`:
 | `require-probes` | Audit | liveness + readiness probes |
 | `require-resource-requests` | Audit | CPU + memory `requests` |
 
-### Namespace scope of the Enforce policies
+### Namespace scope
 
-The 5 `Enforce` policies **exclude system/infra namespaces** (`kube-system`,
-`kyverno`, `argocd`, `argo-rollouts`, `monitoring`, `cert-manager`,
-`ingress-nginx`, `dex`, `headlamp`, `oauth2-proxy`, `local-path-storage`, …).
-Those namespaces host vendored third-party workloads we do not control and
-cannot make fully compliant; enforcing there would block them.
+System/infra namespaces are excluded **globally**, at the engine level, via the
+Kyverno `resourceFilters` ConfigMap (rendered from
+`helm/kyverno/values.yaml` → `config.resourceFiltersIncludeNamespaces`). The
+webhook does not even intercept resources in those namespaces, so the exclusion
+applies uniformly to **every** policy (Enforce *and* Audit) rather than being
+repeated in each one.
 
-The exclusion is **fail-closed**: any namespace *not* listed stays enforced, so
+Excluded namespaces: `kube-system`, `kube-public`, `kube-node-lease`, `kyverno`
+(chart defaults) plus `argocd`, `argo-rollouts`, `monitoring`, `cert-manager`,
+`ingress-nginx`, `dex`, `headlamp`, `oauth2-proxy`, `local-path-storage`. Those
+host vendored third-party workloads we do not control and cannot make fully
+compliant; enforcing there would block them.
+
+The exclusion is **fail-closed**: any namespace *not* listed stays in scope, so
 application namespaces (`sample-app`, `mysql`) are protected by default — and so
-is any new application namespace, unless it is explicitly added to the exclude
-list.
+is any new application namespace, unless it is explicitly added to the filter.
 
 ## Demo: the admission controller blocks a non-compliant Pod
 

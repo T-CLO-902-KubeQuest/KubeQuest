@@ -54,6 +54,7 @@ reportsController:
 
 config:
   resourceFiltersIncludeNamespaces:
+    - argocd
     - argo-rollouts
     - cert-manager
     - dex
@@ -62,4 +63,3 @@ config:
     - local-path-storage
     - monitoring
     - oauth2-proxy
-    - mysql

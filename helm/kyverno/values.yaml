@@ -51,3 +51,15 @@ reportsController:
   resources:
     requests:
       cpu: 25m
+
+config:
+  resourceFiltersIncludeNamespaces:
+    - argocd
+    - argo-rollouts
+    - cert-manager
+    - dex
+    - headlamp
+    - ingress-nginx
+    - local-path-storage
+    - monitoring
+    - oauth2-proxy

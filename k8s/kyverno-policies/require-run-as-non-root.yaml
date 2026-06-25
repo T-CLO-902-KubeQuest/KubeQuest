@@ -1,4 +1,9 @@
 # Restricted security: pods must declare they run as a non-root user.
+# runAsNonRoot is valid at the pod level (spec.securityContext) OR on every
+# container (spec.containers[].securityContext) — Kubernetes treats either as
+# effective. We accept both via anyPattern, matching the upstream Kyverno Pod
+# Security Standards "restricted" policy, so a per-container declaration (as the
+# mysql backup CronJob uses) is not a false positive.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -13,8 +18,25 @@ spec:
                 - Pod
       validate:
         failureAction: Enforce
-        message: "Pods must set spec.securityContext.runAsNonRoot to true."
-        pattern:
-          spec:
-            securityContext:
-              runAsNonRoot: "true"
+        message: "Running as root is not allowed. Set runAsNonRoot to true at the pod level (spec.securityContext.runAsNonRoot) or on every container (spec.containers[].securityContext.runAsNonRoot)."
+        anyPattern:
+          # Option 1: runAsNonRoot is true at the pod level, and no container
+          # overrides it back to false.
+          - spec:
+              securityContext:
+                runAsNonRoot: "true"
+              =(initContainers):
+                - =(securityContext):
+                    =(runAsNonRoot): "true"
+              containers:
+                - =(securityContext):
+                    =(runAsNonRoot): "true"
+          # Option 2: every container (and initContainer, if any) sets
+          # runAsNonRoot to true at the container level.
+          - spec:
+              =(initContainers):
+                - securityContext:
+                    runAsNonRoot: "true"
+              containers:
+                - securityContext:
+                    runAsNonRoot: "true"

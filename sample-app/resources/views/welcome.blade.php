@@ -3,32 +3,82 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Counter App</title>
+        <meta name="theme-color" content="#0f0524">
+        <title>CLICK ARENA — Counter de fou</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="/css/app.css">
-        <script
-            src="https://code.jquery.com/jquery-3.7.0.min.js"
-            integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g="
-            crossorigin="anonymous"></script>
     </head>
     <body>
-        <div class="container">
-            <h1>Sample App</h1>
-            <p class="counter-label">Counter</p>
-            <p id="value">{{ $value }}</p>
-            <button id="add">+1</button>
+        <!-- Calque confettis plein écran -->
+        <canvas id="fx" aria-hidden="true"></canvas>
+
+        <div class="page">
+            <!-- Barre utilisateur (pleine largeur) -->
+            <div class="topbar">
+                <span class="user-chip">👤 {{ $userName }}</span>
+                <form method="POST" action="/logout" class="logout-form">
+                    @csrf
+                    <button type="submit" class="logout-btn">Déconnexion</button>
+                </form>
+            </div>
+
+            <div class="layout">
+                <!-- Gauche : classement -->
+                <aside class="panel side-lb" aria-label="Classement">
+                    <h2 class="panel__title">Classement</h2>
+                    <ol class="lb-list" id="leaderboard"></ol>
+                </aside>
+
+                <!-- Centre : le clic -->
+                <main class="arena center">
+                    <header class="hud">
+                        <div class="rank">
+                            <span class="rank-icon" id="rank-icon">🥚</span>
+                            <span class="rank-title" id="rank-title">Novice du Clic</span>
+                        </div>
+                        <button id="mute" class="mute" type="button" aria-label="Couper le son" aria-pressed="false">🔊</button>
+                    </header>
+
+                    <div class="xp">
+                        <div class="xp-head">
+                            <span class="level-badge">Niv. <b id="level">0</b></span>
+                            <span class="xp-text"><span id="xp-into">0</span> / <span id="xp-need">10</span> XP</span>
+                        </div>
+                        <div class="xp-track"><div class="xp-fill" id="xp-fill"></div></div>
+                    </div>
+
+                    <p class="counter-label">Tes clics</p>
+                    <p id="value" aria-live="polite" aria-atomic="true">{{ $value }}</p>
+
+                    <button id="add" class="add-btn" type="button">
+                        <span class="add-btn__plus">+1</span>
+                        <span class="add-btn__glow" aria-hidden="true"></span>
+                    </button>
+
+                    <div class="ministats">
+                        <div class="ministat"><span class="ministat__num" id="stat-today">0</span><span class="ministat__lbl">aujourd'hui</span></div>
+                        <div class="ministat"><span class="ministat__num" id="stat-cpm">0</span><span class="ministat__lbl">clics/min</span></div>
+                        <div class="ministat"><span class="ministat__num" id="stat-age">—</span><span class="ministat__lbl">âge</span></div>
+                    </div>
+                </main>
+
+                <!-- Droite : succès -->
+                <aside class="panel side-ach" aria-label="Succès">
+                    <h2 class="panel__title">Succès</h2>
+                    <div class="badges" id="badges"></div>
+                </aside>
+            </div>
         </div>
 
+        <!-- Région des toasts -->
+        <div class="toasts" id="toasts" aria-live="assertive" aria-atomic="false"></div>
+
         <script>
-            $(document).ready(function(){
-                $("#add").click(function(e){
-                    $.get("/api/counter/add", function(data){
-                        var $val = $('#value');
-                        $val.text(data.value);
-                        $val.addClass('bump');
-                        setTimeout(function(){ $val.removeClass('bump'); }, 200);
-                    });
-                });
-            });
+            window.__INITIAL_TOTAL__ = {{ (int) $value }};
+            window.__USER_ID__ = {{ (int) $userId }};
         </script>
+        <script src="/js/app.js" defer></script>
     </body>
 </html>

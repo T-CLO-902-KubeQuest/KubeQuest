@@ -30,11 +30,14 @@ spec:
             - name: mysql-backup
               image: docker.io/bitnamilegacy/mysql:8.0.37-debian-12-r2
               env:
-                - name: MYSQL_ROOT_PASSWORD
+                # Least privilege: back up with the app user (scoped to the
+                # laravel DB) instead of root. --no-tablespaces avoids the
+                # global PROCESS privilege a non-root user lacks in MySQL 8.
+                - name: MYSQL_PASSWORD
                   valueFrom:
                     secretKeyRef:
                       name: mysql-credentials
-                      key: mysql-root-password
+                      key: mysql-password
               command: ["/bin/sh", "-c"]
               args:
                 # Write to a .tmp first and rename on success only, so a failed
@@ -42,7 +45,7 @@ spec:
                 - |
                   set -e
                   f=/backups/laravel-$(date +%F-%H%M%S).sql
-                  mysqldump --single-transaction -h mysql -u root -p"$MYSQL_ROOT_PASSWORD" laravel > "$f.tmp"
+                  mysqldump --single-transaction --no-tablespaces -h mysql -u laravel -p"$MYSQL_PASSWORD" laravel > "$f.tmp"
                   mv "$f.tmp" "$f"
               resources:
                 requests:

@@ -1,0 +1,19 @@
+# Deliberately BROKEN variant of sample-app, for the canary rollback demo.
+#
+# It layers a single fault-injection entrypoint on top of the *healthy* image, so
+# it is byte-for-byte the same application — only the startup behaviour changes,
+# and only when BREAK_MODE is set (see docker/break-entrypoint.sh).
+#
+# It is built and pushed ONLY under the dedicated `broken` tag, and never by the
+# auto-publish pipeline (.github/workflows/sample-app-build.yml triggers on push;
+# this image is built by the manual-only sample-app-broken.yml). It therefore
+# cannot reach production through the normal release flow.
+ARG BASE_TAG=latest
+FROM ghcr.io/t-clo-902-kubequest/kubequest/sample-app:${BASE_TAG}
+
+COPY docker/break-entrypoint.sh /usr/local/bin/break-entrypoint.sh
+RUN chmod +x /usr/local/bin/break-entrypoint.sh
+
+# Replace only the entrypoint; the base image's CMD (apache2-foreground) is
+# preserved and ignored by the script, which starts Apache itself.
+ENTRYPOINT ["/usr/local/bin/break-entrypoint.sh"]

@@ -18,6 +18,15 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: kyverno
+  # Kyverno CRDs render with no labels/annotations, but the Server-Side Apply
+  # dry-run defaults metadata.annotations/labels to empty maps that the stored
+  # object prunes — an unresolvable, cosmetic diff. Ignore those two fields.
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jsonPointers:
+        - /metadata/annotations
+        - /metadata/labels
   syncPolicy:
     automated:
       prune: true

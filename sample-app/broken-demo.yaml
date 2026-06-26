@@ -1,0 +1,48 @@
+# Throwaway Deployment to demonstrate that the cluster detects the broken image.
+#
+#   kubectl create namespace broken-demo --dry-run=client -o yaml | kubectl apply -f -
+#   kubectl apply -n broken-demo -f sample-app/broken-demo.yaml
+#   kubectl get pods -n broken-demo -w
+#   kubectl delete namespace broken-demo        # cleanup
+#
+# Pick the fault by editing BREAK_MODE below (crash | oom | cpu), then re-apply.
+# No MySQL dependency: liveness is a tcpSocket check, so the Pod is healthy while
+# inert and only the injected fault breaks it. See BROKEN_IMAGE.md for the modes
+# and what to observe (CrashLoopBackOff / OOMKilled / CPU throttling).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: broken-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: broken-demo }
+  template:
+    metadata:
+      labels: { app: broken-demo }
+    spec:
+      # Kyverno enforces the restricted policies in this (non-excluded) namespace,
+      # so the Pod must declare it runs non-root.
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: app
+          image: ghcr.io/t-clo-902-kubequest/kubequest/sample-app:broken
+          imagePullPolicy: Always
+          # The healthy image runs Apache rootless on 8080 (see Dockerfile), so the
+          # probe and port must target 8080, not 80.
+          ports: [{ containerPort: 8080 }]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          env:
+            - name: BREAK_MODE
+              value: "crash" # <-- change here: crash | oom | cpu
+          livenessProbe:
+            tcpSocket: { port: 8080 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }

@@ -6,7 +6,11 @@ FROM php:8.3-apache
 RUN docker-php-ext-install pdo_mysql
 
 # Patche les paquets OS de l'image de base, puis installe les dépendances.
-RUN apt-get update \
+# APT_REFRESH : changer cette date invalide le cache de cette seule couche pour
+# forcer apt-get upgrade à récupérer les derniers correctifs OS (ex. libssh2).
+ARG APT_REFRESH=2026-06-27
+RUN echo "apt refresh: ${APT_REFRESH}" \
+    && apt-get update \
     && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends git unzip p7zip-full \
     && apt-get clean \

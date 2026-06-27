@@ -44,7 +44,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & push broken image (tag: broken)
+      - name: "Build & push broken image (tag: broken)"
         uses: docker/build-push-action@v6
         with:
           context: ./sample-app

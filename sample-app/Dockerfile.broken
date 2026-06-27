@@ -11,8 +11,7 @@
 ARG BASE_TAG=latest
 FROM ghcr.io/t-clo-902-kubequest/kubequest/sample-app:${BASE_TAG}
 
-COPY docker/break-entrypoint.sh /usr/local/bin/break-entrypoint.sh
-RUN chmod +x /usr/local/bin/break-entrypoint.sh
+COPY --chmod=0755 docker/break-entrypoint.sh /usr/local/bin/break-entrypoint.sh
 
 # Replace only the entrypoint; the base image's CMD (apache2-foreground) is
 # preserved and ignored by the script, which starts Apache itself.

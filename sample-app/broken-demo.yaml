@@ -25,6 +25,7 @@ spec:
       # so the Pod must declare it runs non-root.
       securityContext:
         runAsNonRoot: true
+        runAsUser: 33 # www-data — l'UID que le kubelet réclame pour vérifier non-root
       containers:
         - name: app
           image: ghcr.io/t-clo-902-kubequest/kubequest/sample-app:broken

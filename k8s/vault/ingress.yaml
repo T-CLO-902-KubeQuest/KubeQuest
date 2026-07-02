@@ -1,9 +1,10 @@
 # Ingress exposing the Vault UI at vault.kubequest.epitech.beer.
 #
-# Vault has no simple native OIDC login for its UI, so unlike Grafana it
-# delegates authentication to oauth2-proxy's nginx auth_request (same pattern
-# documented in k8s/oauth2-proxy/README.md, "Protecting a future tool") — this
-# is the first Ingress in the cluster to actually consume it.
+# Like Grafana — and unlike the tools that rely on oauth2-proxy's forward-auth
+# — Vault authenticates users itself: its native OIDC auth method speaks to
+# the cluster-wide Dex (staticClient `vault`, see helm/dex/values.yaml and
+# adr/0007), so the login page is public and no auth_request annotations are
+# needed here.
 #
 # Vault's listener has tls_disable = 1 (see helm/vault/values.yaml), so the
 # Service serves plain HTTP — no backend-protocol annotation needed, HTTP is
@@ -16,12 +17,6 @@ metadata:
   namespace: vault
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/auth-url: "https://auth.kubequest.epitech.beer/oauth2/auth"
-    # rd must carry scheme+host, not just the path: oauth2-proxy lives on its
-    # own sub-domain, so a path-only rd would strand the user on auth.* after
-    # login instead of coming back here. whitelist-domain on the proxy side
-    # already allows *.kubequest.epitech.beer redirects.
-    nginx.ingress.kubernetes.io/auth-signin: "https://auth.kubequest.epitech.beer/oauth2/start?rd=$scheme://$host$escaped_request_uri"
 spec:
   ingressClassName: nginx
   tls:

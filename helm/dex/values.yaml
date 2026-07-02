@@ -90,6 +90,14 @@ config:
       secretEnv: OAUTH2_PROXY_CLIENT_SECRET
       redirectURIs:
         - https://auth.kubequest.epitech.beer/oauth2/callback
+    # Vault's native OIDC auth method (adr/0007): the UI popup callback plus
+    # the local callback used by `vault login -method=oidc` from a workstation.
+    - id: vault
+      name: Vault
+      secretEnv: VAULT_CLIENT_SECRET
+      redirectURIs:
+        - https://vault.kubequest.epitech.beer/ui/vault/auth/oidc/oidc/callback
+        - http://localhost:8250/oidc/callback
 
 # Secrets injected into the Dex pod, all sourced from hand-created Kubernetes
 # Secrets (never committed):
@@ -103,7 +111,8 @@ config:
 #     --from-literal=argocd=<secret> \
 #     --from-literal=headlamp=<secret> \
 #     --from-literal=grafana=<secret> \
-#     --from-literal=oauth2-proxy=<secret>
+#     --from-literal=oauth2-proxy=<secret> \
+#     --from-literal=vault=<secret>
 envVars:
   - name: GITHUB_CLIENT_ID
     valueFrom:
@@ -135,6 +144,11 @@ envVars:
       secretKeyRef:
         name: dex-clients
         key: oauth2-proxy
+  - name: VAULT_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: dex-clients
+        key: vault
 
 # Internal only; traffic reaches Dex through the standalone Ingress
 # (k8s/dex/ingress.yaml), so ClusterIP — never LoadBalancer/NodePort.

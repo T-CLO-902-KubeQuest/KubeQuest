@@ -59,22 +59,41 @@ groups to clients that request the `groups` scope.
 
 ## Clients
 Each service that logs in through Dex is declared as a `staticClient` in
-`helm/dex/values.yaml` (Grafana, Argo CD, Headlamp, oauth2-proxy). Client secrets
-are **not** in Git: each entry uses `secretEnv` (dex >= 2.35.0) to read its secret
-from an env var, fed by a hand-created `dex-clients` Secret:
+`helm/dex/values.yaml` (Grafana, Argo CD, Headlamp, oauth2-proxy, Vault).
+Client secrets are **not** in Git: each entry uses `secretEnv` (dex >= 2.35.0)
+to read its secret from an env var, fed by a hand-created `dex-clients` Secret:
 ```sh
 kubectl -n dex create secret generic dex-clients \
   --from-literal=argocd=<secret> \
   --from-literal=headlamp=<secret> \
   --from-literal=grafana=<secret> \
-  --from-literal=oauth2-proxy=<secret>
+  --from-literal=oauth2-proxy=<secret> \
+  --from-literal=vault=<secret>
 ```
 The `oauth2-proxy` client is the shared auth layer (Issue #11) that fronts tools
 without their own login (Prometheus, Grafana, ...); see
-`k8s/oauth2-proxy/README.md`.
+`k8s/oauth2-proxy/README.md`. The `vault` client backs Vault's native OIDC
+auth method (see `k8s/vault/README.md` and adr/0007).
 Each value must match the client secret configured in the corresponding app
 (e.g. `argocd` here == the OIDC client secret in `argocd-secret`). A client's
 `redirectURIs` must exactly match what the app sends.
+
+### Adding a client to a live cluster
+Order matters: the new `envVars` entry in the rendered manifest points at a
+`dex-clients` key that must already exist, otherwise the new dex pod fails
+with `CreateContainerConfigError`.
+
+1. Add the key to the Secret **first** (generate the value locally, never
+   commit it):
+   ```sh
+   kubectl -n dex patch secret dex-clients --type=json \
+     -p '[{"op":"add","path":"/data/<client>","value":"'"$(openssl rand -base64 24 | tr -d '\n' | base64 -w0)"'"}]'
+   ```
+2. Declare the `staticClient` + `envVars` entry in `helm/dex/values.yaml`,
+   regenerate `k8s/dex/dex.yaml`, commit, merge. The chart's
+   `checksum/config` annotation changes with the config, so Argo CD's sync
+   rolls the dex pod automatically — no manual restart needed.
+3. Configure the consuming app with the same secret value.
 
 ## Deployment
 Managed by GitOps: the `Application` at `argocd/apps/dex/application.yaml` is

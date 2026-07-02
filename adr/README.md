@@ -22,3 +22,4 @@ contexte et ses conséquences.
 | [0004](0004-argo-rollouts-canary-deployment.md) | Déploiement canary et rollback automatique avec Argo Rollouts | Accepted |
 | [0005](0005-vault-secrets-management.md) | Gestion des secrets avec HashiCorp Vault (standalone + Raft) | Accepted |
 | [0006](0006-vault-in-cluster-auto-unseal.md) | Auto-unseal in-cluster de Vault avec vault-unsealer | Accepted |
+| [0007](0007-vault-native-oidc-dex.md) | Login OIDC natif Dex pour l'UI Vault | Accepted |

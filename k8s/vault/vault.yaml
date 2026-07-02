@@ -36,6 +36,7 @@ metadata:
 data:
   extraconfig-from-values.hcl: |-
     ui = true
+    disable_mlock = true
     
     listener "tcp" {
       tls_disable = 1
@@ -45,8 +46,6 @@ data:
     storage "raft" {
       path = "/vault/data"
     }
-    
-    disable_mlock = true
 ---
 # Source: vault/templates/injector-clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -410,6 +409,9 @@ spec:
    
           securityContext:
             allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
           env:
             - name: HOST_IP
               valueFrom:

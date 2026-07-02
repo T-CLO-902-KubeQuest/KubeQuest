@@ -24,8 +24,14 @@
 server:
   standalone:
     enabled: true
+    # disable_mlock is doubly required here: Vault >= 1.20 refuses to start
+    # with Integrated Storage unless it is set explicitly, and the container
+    # drops ALL capabilities (kyverno policy) so the mlock syscall would fail
+    # anyway (no IPC_LOCK). HashiCorp recommends disabling mlock with Raft:
+    # data already touches disk, so mlock adds no meaningful protection.
     config: |
       ui = true
+      disable_mlock = true
 
       listener "tcp" {
         tls_disable = 1
@@ -35,6 +41,18 @@ server:
       storage "raft" {
         path = "/vault/data"
       }
+
+  # The kyverno ClusterPolicies enforce drop-all-capabilities in app
+  # namespaces (vault is not in the infra exclusion list, and complying is
+  # better than excluding). Setting .container REPLACES the chart's default
+  # container securityContext, so allowPrivilegeEscalation must be restated.
+  statefulSet:
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
 
   dataStorage:
     enabled: true

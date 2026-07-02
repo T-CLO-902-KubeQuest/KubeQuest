@@ -49,6 +49,16 @@ HA either: Vault is a single point of failure by design in this deployment.
 Persistent storage: a 2Gi PVC on the **`local-path`** StorageClass (same as
 MySQL), `server.dataStorage`.
 
+### Kyverno compliance
+The `vault` namespace is **not** in the Kyverno infra exclusion list
+(`helm/kyverno/values.yaml`), so the enforced ClusterPolicies apply. The
+server container therefore drops ALL capabilities
+(`server.statefulSet.securityContext.container` in `helm/vault/values.yaml`),
+which also means no `IPC_LOCK`: `disable_mlock = true` is set in the server
+config — required anyway by Vault >= 1.20 with Integrated Storage, and
+HashiCorp's recommendation for Raft (data already touches disk, mlock adds
+no meaningful protection).
+
 ## Initialization and unseal (manual, post-deployment)
 Vault standalone starts **sealed**. Unlike the managed-cloud offerings, this
 deployment has no auto-unseal configured (see "Production evolution" below),

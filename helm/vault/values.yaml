@@ -1,0 +1,60 @@
+# Vault values used to render k8s/vault/vault.yaml.
+# Regenerate the manifest with:
+#   helm repo add hashicorp https://helm.releases.hashicorp.com
+#   helm repo update hashicorp
+#   helm template vault hashicorp/vault \
+#     --version 0.32.0 \
+#     --namespace vault \
+#     --values helm/vault/values.yaml \
+#     > k8s/vault/vault.yaml
+#
+# Pinned chart version: 0.32.0 (app version 1.21.2).
+#
+# Only values that DIFFER from the chart defaults live here; Helm deep-merges,
+# so untouched keys keep the chart's recommended values.
+
+# --- Mode: standalone with Integrated Storage (Raft) ---
+# The chart's "ha" mode deploys a multi-replica StatefulSet with Raft
+# clustering between pods (server.ha.raft.enabled) — we do NOT want that on
+# this 2-worker/4GB cluster. Instead we keep server.ha.enabled: false (the
+# chart default) and use "standalone" mode, but override its config to swap
+# the default `storage "file"` backend for `storage "raft"`. This is a single
+# pod using Integrated Storage: no external Consul, no multi-node quorum, but
+# still the modern Raft storage engine instead of the legacy file backend.
+server:
+  standalone:
+    enabled: true
+    config: |
+      ui = true
+
+      listener "tcp" {
+        tls_disable = 1
+        address = "[::]:8200"
+        cluster_address = "[::]:8201"
+      }
+      storage "raft" {
+        path = "/vault/data"
+      }
+
+  dataStorage:
+    enabled: true
+    size: 2Gi
+    storageClass: local-path
+    accessMode: ReadWriteOnce
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+injector:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

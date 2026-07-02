@@ -20,3 +20,4 @@ contexte et ses conséquences.
 | [0002](0002-mysql-network-policy-and-backup-hardening.md) | Durcissement de la NetworkPolicy et des backups MySQL | Accepted |
 | [0003](0003-native-multiarch-image-build.md) | Build multi-arch natif de l'image sample-app | Accepted |
 | [0004](0004-argo-rollouts-canary-deployment.md) | Déploiement canary et rollback automatique avec Argo Rollouts | Accepted |
+| [0005](0005-vault-secrets-management.md) | Gestion des secrets avec HashiCorp Vault (standalone + Raft) | Accepted |

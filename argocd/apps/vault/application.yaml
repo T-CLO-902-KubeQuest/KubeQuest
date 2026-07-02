@@ -1,0 +1,32 @@
+# HashiCorp Vault (standalone + Integrated Storage/Raft) with the Vault Agent
+# Injector enabled, synced by the root app-of-apps.
+#
+# vault.yaml = server + injector rendered from the official chart; ingress.yaml
+# = UI exposure at vault.kubequest.epitech.beer (issue: Vault secrets mgmt).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/T-CLO-902-KubeQuest/KubeQuest.git
+    targetRevision: main
+    path: k8s/vault
+    directory:
+      include: "{vault.yaml,ingress.yaml}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vault
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

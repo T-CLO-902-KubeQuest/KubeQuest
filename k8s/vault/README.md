@@ -59,29 +59,55 @@ config — required anyway by Vault >= 1.20 with Integrated Storage, and
 HashiCorp's recommendation for Raft (data already touches disk, mlock adds
 no meaningful protection).
 
-## Initialization and unseal (manual, post-deployment)
-Vault standalone starts **sealed**. Unlike the managed-cloud offerings, this
-deployment has no auto-unseal configured (see "Production evolution" below),
-so this is a one-time, then repeat-after-every-restart, manual procedure:
+## Initialization (manual, once) and auto-unseal
+Vault standalone starts **sealed**. Initialization is a one-time manual step:
 
 ```sh
 kubectl -n vault exec -it vault-0 -- vault operator init \
   -key-shares=5 -key-threshold=3
 # Store the 5 unseal keys and the root token somewhere safe, OUTSIDE Git.
 # Never commit real key/token values, even as "examples".
-
-kubectl -n vault exec -it vault-0 -- vault operator unseal <key1>
-kubectl -n vault exec -it vault-0 -- vault operator unseal <key2>
-kubectl -n vault exec -it vault-0 -- vault operator unseal <key3>
 ```
 
-Any of the 5 keys works as long as 3 distinct ones are supplied. Check status
-at any time with `kubectl -n vault exec -it vault-0 -- vault status`.
+Unsealing is handled by the in-cluster **vault-unsealer** controller
+(`k8s/vault/unsealer.yaml`, see [adr/0006](../../adr/0006-vault-in-cluster-auto-unseal.md)):
+it watches Secrets in this namespace labelled with the target StatefulSet
+name and unseals the vault pods whenever they start sealed — which on this
+cluster happens **every morning** (the nodes are shut down at night).
+
+Create the Secret once, by hand (out of Git, like `mysql-credentials`), with
+at least `-key-threshold` (3) of the 5 keys:
+
+```sh
+kubectl -n vault create secret generic vault-unseal-keys \
+  --from-literal=unsealKey1=<key1> \
+  --from-literal=unsealKey2=<key2> \
+  --from-literal=unsealKey3=<key3>
+kubectl -n vault label secret vault-unseal-keys \
+  vault-unsealer.bakito.net/stateful-set=vault
+```
+
+Check status at any time with
+`kubectl -n vault exec -it vault-0 -- vault status`. Manual fallback if the
+unsealer is ever broken: `vault operator unseal <key>` three times.
 
 > The pod's readiness probe expects Vault to be unsealed, so `vault-0` will
 > show `0/1 Ready` (and Argo CD will report the `vault` Application as
-> `Progressing`/`Degraded`) between deployment and the first unseal. This is
-> expected — not a sync failure.
+> `Progressing`/`Degraded`) between deployment and the first unseal, and
+> briefly after each restart until the unsealer acts. This is expected — not
+> a sync failure.
+
+### Regenerating the unsealer manifest
+```sh
+helm repo add bakito https://bakito.github.io/helm-charts
+helm repo update bakito
+helm template vault-unsealer bakito/vault-unsealer \
+  --version 0.4.1 \
+  --namespace vault \
+  --values helm/vault/unsealer-values.yaml \
+  > k8s/vault/unsealer.yaml
+```
+Pinned chart version: **0.4.1** (app version v0.4.1).
 
 ## Kubernetes auth method (Injector foundation, demo only)
 Enable the auth method Vault needs to validate Kubernetes ServiceAccount
@@ -146,12 +172,14 @@ No manual `kubectl apply` for the manifests — but init/unseal and the
 Kubernetes auth method setup above remain manual, out-of-Git steps.
 
 ## Production evolution
-- **No auto-unseal**: every pod restart (OOMKill, reschedule, node reboot)
-  re-seals Vault and requires a manual unseal with 3 of the 5 keys. The
-  robust evolution is `seal "awskms"` in the server config, which needs IAM
-  wiring (a role for the pod, a KMS key policy) not yet present in the
-  Terraform infra — same gap already noted for the AWS EBS CSI driver in
-  `k8s/mysql/README.md`.
+- **Auto-unseal keys live in-cluster**: the `vault-unseal-keys` Secret means
+  Vault's seal no longer protects against an attacker with cluster access —
+  anyone who can read Secrets in the `vault` namespace can unseal (see
+  adr/0006 for why this trade-off was accepted on this nightly-shutdown
+  cluster). The robust evolution is `seal "awskms"` in the server config,
+  which needs IAM wiring (a role for the pod, a KMS key policy) not yet
+  present in the Terraform infra — same gap already noted for the AWS EBS
+  CSI driver in `k8s/mysql/README.md`.
 - **No HA**: a single pod is a single point of failure. Multi-replica Raft
   HA is deliberately deferred until the cluster has more headroom.
 - **Secrets not yet migrated**: Vault currently coexists with the hand-created

@@ -17,7 +17,11 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/auth-url: "https://auth.kubequest.epitech.beer/oauth2/auth"
-    nginx.ingress.kubernetes.io/auth-signin: "https://auth.kubequest.epitech.beer/oauth2/start?rd=$escaped_request_uri"
+    # rd must carry scheme+host, not just the path: oauth2-proxy lives on its
+    # own sub-domain, so a path-only rd would strand the user on auth.* after
+    # login instead of coming back here. whitelist-domain on the proxy side
+    # already allows *.kubequest.epitech.beer redirects.
+    nginx.ingress.kubernetes.io/auth-signin: "https://auth.kubequest.epitech.beer/oauth2/start?rd=$scheme://$host$escaped_request_uri"
 spec:
   ingressClassName: nginx
   tls:

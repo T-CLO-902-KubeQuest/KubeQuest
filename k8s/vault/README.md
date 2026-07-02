@@ -87,6 +87,11 @@ kubectl -n vault label secret vault-unseal-keys \
   vault-unsealer.bakito.net/stateful-set=vault
 ```
 
+> The unsealer only loads the keys Secret **at startup**: if the Secret is
+> created (or changed) while the controller is already running, restart it —
+> `kubectl -n vault rollout restart deploy/vault-unsealer` — so it picks the
+> keys up and performs the unseal.
+
 Check status at any time with
 `kubectl -n vault exec -it vault-0 -- vault status`. Manual fallback if the
 unsealer is ever broken: `vault operator unseal <key>` three times.

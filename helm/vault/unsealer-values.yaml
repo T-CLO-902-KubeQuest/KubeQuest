@@ -1,0 +1,30 @@
+# vault-unsealer values used to render k8s/vault/unsealer.yaml.
+# Regenerate the manifest with:
+#   helm repo add bakito https://bakito.github.io/helm-charts
+#   helm repo update bakito
+#   helm template vault-unsealer bakito/vault-unsealer \
+#     --version 0.4.1 \
+#     --namespace vault \
+#     --values helm/vault/unsealer-values.yaml \
+#     > k8s/vault/unsealer.yaml
+#
+# Pinned chart version: 0.4.1 (app version v0.4.1).
+#
+# In-cluster auto-unseal controller (see adr/0006): watches Secrets labelled
+# vault-unsealer.bakito.net/stateful-set=vault in this namespace and unseals
+# the vault pods with the unsealKey* entries whenever they start sealed. The
+# chart's default securityContext already satisfies the enforced kyverno
+# policies (drop ALL, runAsNonRoot, no privilege escalation).
+
+# Only values that DIFFER from the chart defaults live here; Helm deep-merges,
+# so untouched keys keep the maintainer's recommended values.
+
+# Trim requests for this small cluster (same rationale as helm/kyverno):
+# reserve less so the pod schedules easily, keep the chart's limits untouched.
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 512Mi

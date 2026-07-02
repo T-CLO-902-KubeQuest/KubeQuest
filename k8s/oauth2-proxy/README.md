@@ -46,8 +46,10 @@ metadata:
 > The `rd` parameter must carry `$scheme://$host`, not just the escaped path:
 > the proxy lives on its own sub-domain, so a path-only `rd` would redirect
 > the user to `auth.kubequest.epitech.beer/<path>` after login instead of
-> back to the protected tool. (Found the hard way when Vault became the first
-> real consumer — see `k8s/vault/ingress.yaml`.)
+> back to the protected tool. (Found the hard way when Vault briefly sat
+> behind the proxy; Vault has since moved to its own native OIDC login —
+> adr/0007 — so nothing consumes the forward-auth mechanism today, but the
+> corrected annotation above is the one future tools must copy.)
 
 That's the whole opt-in. Because the session cookie is scoped to the parent
 domain (`--cookie-domain=.kubequest.epitech.beer`), one login covers every

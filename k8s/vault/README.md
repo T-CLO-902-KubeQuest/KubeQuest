@@ -161,14 +161,44 @@ issuer (HTTP-01). The HTTP-01 self-check needs a CoreDNS `hosts` entry for
 DNS A record must also exist at the DNS provider (`epitech.beer`) — both are
 manual, out-of-Git steps.
 
-## SSO (oauth2-proxy)
-Vault's OSS UI has no simple native OIDC login, so — unlike Grafana, which
-speaks OIDC to Dex directly — the Vault Ingress delegates authentication to
-**oauth2-proxy**'s nginx `auth_request` forward-auth, using the annotations
-documented in `k8s/oauth2-proxy/README.md` ("Protecting a future tool"). This
-is the first Ingress in the cluster to actually consume that mechanism.
-Logging into the UI via SSO only proves GitHub org membership — it does not
-unseal Vault or grant any Vault policy; the two layers are independent.
+## SSO (native OIDC via Dex)
+Vault authenticates users itself, like Grafana: its **native OIDC auth
+method** (`auth/oidc`) speaks to the cluster-wide Dex (staticClient `vault`
+in `helm/dex/values.yaml`, client secret = the `vault` key of the
+`dex-clients` Secret). The earlier oauth2-proxy forward-auth layer was
+removed in favour of this single login — see
+[adr/0007](../../adr/0007-vault-native-oidc-dex.md).
+
+One-time configuration (after init/unseal, with a root token):
+
+```sh
+vault auth enable oidc
+vault write auth/oidc/config \
+  oidc_discovery_url="https://dex.kubequest.epitech.beer" \
+  oidc_client_id="vault" \
+  oidc_client_secret="<the vault key of the dex-clients Secret>" \
+  default_role="admin"
+
+vault policy write admin - <<'EOF'
+path "*" {
+  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+}
+EOF
+
+vault write auth/oidc/role/admin \
+  allowed_redirect_uris="https://vault.kubequest.epitech.beer/ui/vault/auth/oidc/oidc/callback" \
+  allowed_redirect_uris="http://localhost:8250/oidc/callback" \
+  user_claim="email" \
+  oidc_scopes="openid,profile,email" \
+  policies="admin" \
+  token_ttl="1h"
+```
+
+UI login: pick the **OIDC** method → Dex popup → GitHub (org-restricted) →
+back in the UI with the `admin` policy. CLI login from a workstation:
+`vault login -method=oidc` (uses the `http://localhost:8250/oidc/callback`
+redirect). Any member of the `T-CLO-902-KubeQuest` GitHub org gets the
+**admin** policy — an accepted trade-off on this demo cluster (adr/0007).
 
 ## Deployment
 Managed by GitOps: the `Application` at `argocd/apps/vault/application.yaml`

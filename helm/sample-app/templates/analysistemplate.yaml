@@ -12,7 +12,7 @@ spec:
       initialDelay: 30s
       interval: 15s
       count: 4
-      # /readyz must answer 200 with {"healthy":true}. failureLimit tolerates a
+      # /api/readyz must answer 200 with {"healthy":true}. failureLimit tolerates a
       # transient blip; a broken release (forceUnhealthy / DB down => 503) fails
       # every probe and, once the limit is exceeded, fails the AnalysisRun -> the
       # Rollout aborts and rolls back to the stable ReplicaSet.
@@ -21,11 +21,11 @@ spec:
       successCondition: "result == true"
       failureLimit: 2
       provider:
-        # Hit the DB-backed /readyz endpoint directly over HTTP. No Job, no
+        # Hit the DB-backed /api/readyz endpoint directly over HTTP. No Job, no
         # RBAC, no kubectl image: the measurement is the real application health
         # signal. The Service fronts all pods, but forceUnhealthy / a broken
         # image affects every pod, so a bad release is reflected here.
         web:
-          url: http://{{ include "sample-app.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local/readyz
+          url: http://{{ include "sample-app.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local/api/readyz
           timeoutSeconds: 5
           jsonPath: "{$.healthy}"

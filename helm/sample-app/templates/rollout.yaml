@@ -14,7 +14,7 @@ spec:
   progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
   strategy:
     canary:
-      # Background analysis (/readyz HTTP health) decides promotion vs rollback.
+      # Background analysis (/api/readyz HTTP health) decides promotion vs rollback.
       analysis:
         startingStep: {{ .Values.canary.analysis.startingStep }}
         templates:
@@ -72,12 +72,13 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 3
-          # Readiness hits the /readyz endpoint, which checks the DB (and honours
+          # Readiness hits the /api/readyz endpoint, which checks the DB (and honours
           # the forceUnhealthy demo flag) and returns JSON. A broken release
           # never becomes Ready; the same endpoint backs the canary analysis.
+          # It lives in the stateless API group so probing creates no DB session rows.
           readinessProbe:
             httpGet:
-              path: /readyz
+              path: /api/readyz
               port: http
             initialDelaySeconds: 10
             periodSeconds: 5

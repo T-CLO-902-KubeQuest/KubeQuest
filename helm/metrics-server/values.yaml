@@ -1,0 +1,32 @@
+# metrics-server — fournit la Metrics API (metrics.k8s.io) que `kubectl top` et
+# les HorizontalPodAutoscaler consomment. Sans lui, tout HPA reste bloqué sur
+# TARGET <unknown> car il ne peut pas lire la conso CPU des pods.
+#
+# Rendu dans k8s/metrics-server/metrics-server.yaml via :
+#
+#   helm template metrics-server metrics-server/metrics-server \
+#     --version 3.13.1 -n metrics-server \
+#     -f helm/metrics-server/values.yaml > k8s/metrics-server/metrics-server.yaml
+#
+# (chart repo: https://kubernetes-sigs.github.io/metrics-server/)
+
+# Sur un cluster kubeadm, le kubelet de chaque nœud présente un certificat TLS
+# auto-signé que metrics-server refuse par défaut → le pod resterait Ready 0/1
+# et `kubectl top` échouerait. --kubelet-insecure-tls désactive cette
+# vérification. Acceptable en cluster interne ; en prod on provisionnerait des
+# certs kubelet signés par la CA du cluster (serverTLSBootstrap) à la place.
+# NB: le chart concatène `defaultArgs` (cert-dir, address-types, metric-resolution)
+# avec `args`, donc on n'écrase rien ici, on ajoute.
+args:
+  - --kubelet-insecure-tls
+
+# La policy Kyverno require-resource-limits est en Enforce : sans `limits`,
+# l'admission rejette le Deployment. Le chart ne fournit que les requests par
+# défaut, on complète donc les limits.
+resources:
+  requests:
+    cpu: 100m
+    memory: 200Mi
+  limits:
+    cpu: 250m
+    memory: 300Mi

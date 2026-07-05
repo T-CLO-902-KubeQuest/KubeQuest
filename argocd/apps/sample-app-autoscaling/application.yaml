@@ -1,0 +1,32 @@
+# HPA de sample-app — overlay GitOps, séparé du chart publié sur OCI (voir
+# l'en-tête de k8s/sample-app-hpa/hpa.yaml pour la justification).
+# Synced par le root app-of-apps.
+#
+# Wave 2 : après sample-app (wave 1, qui crée le Rollout ciblé) et après
+# metrics-server (wave 0, qui alimente l'HPA en métriques CPU).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-app-autoscaling
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/T-CLO-902-KubeQuest/KubeQuest.git
+    targetRevision: main
+    path: k8s/sample-app-hpa
+    directory:
+      include: "hpa.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sample-app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

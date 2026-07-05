@@ -1,0 +1,37 @@
+# HorizontalPodAutoscaler pour sample-app.
+#
+# Choix d'architecture : l'HPA vit ici, en overlay GitOps de CE cluster, et NON
+# dans le chart Helm de l'app. Le chart est un artefact réutilisable publié sur
+# GHCR ; la politique de scaling (min/max, seuil CPU) est une décision propre à
+# l'environnement. On sépare le "quoi" (le chart) du "combien ici" (cet HPA).
+#
+# scaleTargetRef pointe un Rollout Argo (pas un Deployment) : Argo Rollouts
+# implémente le sous-resource /scale, donc l'HPA le pilote exactement comme un
+# Deployment et répartit les replicas entre stable et canary pendant un rollout.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sample-app
+  namespace: sample-app
+spec:
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: sample-app-sample-app
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    # Cible : maintenir la conso CPU moyenne des pods à 50 % de leur *request*
+    # (100m défini dans le chart). Au-delà, l'HPA ajoute des replicas ; en
+    # dessous durablement, il en retire. Le % est calculé sur la request, d'où
+    # l'importance que le chart déclare bien resources.requests.cpu.
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
+  # Pas de bloc `behavior` : on garde les défauts. Scale-up immédiat, mais
+  # scale-down avec une fenêtre de stabilisation de 300s (5 min) — c'est
+  # volontaire (évite le flapping) et c'est le point à commenter en démo quand
+  # les replicas ne redescendent pas tout de suite après l'arrêt de la charge.

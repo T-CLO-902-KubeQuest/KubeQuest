@@ -1,0 +1,34 @@
+# metrics-server — Metrics API (metrics.k8s.io) pour `kubectl top` et les HPA.
+# Synced par le root app-of-apps.
+#
+# Wave 0 : doit être Healthy avant l'HPA de sample-app (wave 2), sinon l'HPA
+# démarre sur TARGET <unknown> faute de source de métriques CPU.
+#
+# Manifeste pré-rendu dans k8s/metrics-server/metrics-server.yaml ; voir
+# helm/metrics-server/values.yaml pour la commande `helm template` exacte.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metrics-server
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/T-CLO-902-KubeQuest/KubeQuest.git
+    targetRevision: main
+    path: k8s/metrics-server
+    directory:
+      include: "metrics-server.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: metrics-server
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

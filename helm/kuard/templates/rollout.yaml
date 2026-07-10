@@ -24,6 +24,10 @@ spec:
         startingStep: {{ .Values.canary.analysis.startingStep }}
         templates:
           - templateName: {{ include "kuard.fullname" . }}-canary-health
+        args:
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Latest
       steps:
         {{- toYaml .Values.canary.steps | nindent 8 }}
   template:

@@ -1,10 +1,12 @@
 replicaCount: 2
 
 image:
-  # Upstream demo image from "Kubernetes Up and Running". The blue/green/purple
+  # kuard demo image from "Kubernetes Up and Running", rebuilt from the
+  # upstream sources by .github/workflows/kuard-mirror.yml (the original
+  # gcr.io/kuar-demo images died with the GCR shutdown). The blue/green/purple
   # tags serve the same app with a different banner color, which makes a canary
   # rollout (and its rollback) visible at a glance in the browser.
-  repository: gcr.io/kuar-demo/kuard-amd64
+  repository: ghcr.io/t-clo-902-kubequest/kubequest/kuard
   # Empty by default: falls back to Chart.appVersion ("blue").
   tag: ""
   pullPolicy: IfNotPresent

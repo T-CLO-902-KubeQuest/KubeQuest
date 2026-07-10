@@ -64,6 +64,9 @@ spec:
             failureThreshold: 3
           securityContext:
             allowPrivilegeEscalation: false
+            # kuard serves everything from memory (no writes to the root fs),
+            # and the require-read-only-root-fs Kyverno policy audits this.
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL

@@ -1,0 +1,66 @@
+name: kuard - Build & Publish mirror
+
+# gcr.io (Google Container Registry) was shut down, so the upstream
+# gcr.io/kuar-demo/kuard-amd64 images are gone (403). This workflow rebuilds
+# kuard from the upstream sources (pinned commit) and publishes the colored
+# demo tags to this project's GHCR, consumed by helm/kuard.
+#
+# The color banner in the kuard UI comes from the version string baked in at
+# build time (VERSION=1-blue => blue banner), which upstream injects via the
+# FAKEVER Makefile variable; we reproduce it with a build-arg on the stock
+# Dockerfile.
+#
+# Manual trigger only: the upstream commit is pinned, there is nothing to
+# rebuild on push.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  # Upstream https://github.com/kubernetes-up-and-running/kuard, master as of
+  # 2026-07 (last commit 2021 — the project is frozen).
+  KUARD_REPO: https://github.com/kubernetes-up-and-running/kuard.git
+  KUARD_COMMIT: a27b6968777a865cea3af83713795b634c38858b
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        color: [blue, green, purple]
+    steps:
+      - name: Checkout upstream kuard (pinned)
+        run: |
+          git clone "$KUARD_REPO" kuard
+          git -C kuard checkout "$KUARD_COMMIT"
+
+      - name: Inject color version into the Dockerfile
+        # The stock Dockerfile hardcodes ENV VERSION=test; turn it into a
+        # build-arg so the binary reports 1-<color> and the UI picks the color.
+        run: |
+          sed -i 's/^ENV VERSION=test$/ARG FAKE_VERSION=blue\nENV VERSION=1-${FAKE_VERSION}/' kuard/Dockerfile
+          grep -A1 'ARG FAKE_VERSION' kuard/Dockerfile
+
+      - name: Compute image name (GHCR is lowercase-only)
+        id: image
+        run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY,,}/kuard" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: kuard
+          push: true
+          build-args: |
+            FAKE_VERSION=${{ matrix.color }}
+          tags: ${{ steps.image.outputs.name }}:${{ matrix.color }}

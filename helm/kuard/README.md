@@ -36,10 +36,14 @@ Argo Rollouts revient au ReplicaSet stable.
 1. Dans `helm/kuard/values.yaml`, passer `forceUnhealthy: true`, committer sur
    `main` : Argo CD sync, le Rollout démarre un canary dont la readinessProbe
    pointe sur un chemin inexistant (404) — il ne devient jamais Ready.
-2. L'`AnalysisTemplate` sonde le Service canary (`kuard-kuard-canary`), sans
-   endpoint Ready chaque mesure échoue ; après 2 échecs le Rollout **abort** et
-   rollback vers la version stable (`kubectl argo rollouts get rollout
-   kuard-kuard -n kuard --watch` pour le suivi).
+2. L'`AnalysisTemplate` mesure via Prometheus les replicas Ready du ReplicaSet
+   canary (`kube_replicaset_status_ready_replicas`) ; un canary jamais prêt
+   reste à 0, et après 3 mesures en échec (> `failureLimit: 2`) le Rollout
+   **abort** et rollback vers la version stable. Chronologie constatée : ~1 min
+   entre le sync et l'abort, sans interruption du service public.
+   (Une sonde HTTP du Service canary ne détecterait rien : Argo Rollouts ne
+   bascule le sélecteur de ce Service qu'une fois le canary disponible, la
+   sonde continuerait donc de taper les pods stables sains.)
 3. Remettre `forceUnhealthy: false` et committer.
 
 Variante visuelle sans casser quoi que ce soit : changer `image.tag` de `blue`

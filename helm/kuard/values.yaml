@@ -9,7 +9,9 @@ image:
   repository: ghcr.io/t-clo-902-kubequest/kubequest/kuard
   # Empty by default: falls back to Chart.appVersion ("blue").
   tag: ""
-  pullPolicy: IfNotPresent
+  # The color tags are mutable (re-published by kuard-mirror.yml), so always
+  # resolve the current digest instead of trusting the node cache.
+  pullPolicy: Always
 
 service:
   type: ClusterIP

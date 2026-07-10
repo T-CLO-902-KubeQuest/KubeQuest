@@ -60,3 +60,14 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+  # Le Rollout déclare replicas depuis le chart (replicaCount), mais dès qu'un
+  # HPA (voir argocd/apps/sample-app-autoscaling) pilote ce Rollout, c'est lui
+  # qui possède le nombre de replicas. Sans cette exception, selfHeal
+  # remettrait la valeur du chart à chaque scale et se battrait avec l'HPA
+  # (pods qui montent puis redescendent en boucle). On retire donc /spec/replicas
+  # du champ de la réconciliation Argo CD.
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Rollout
+      jsonPointers:
+        - /spec/replicas

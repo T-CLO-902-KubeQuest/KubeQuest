@@ -1,0 +1,34 @@
+# kuard — demo workload for the monitoring soutenance, synced by the root
+# app-of-apps.
+#
+# Unlike sample-app (chart published as an OCI artifact by CI), this chart has
+# no image build of its own (upstream gcr.io/kuar-demo image), so Argo CD
+# renders it straight from this Git repo (path: helm/kuard). Deployment values
+# ARE the chart defaults: to run the rollback demo, flip `forceUnhealthy` in
+# helm/kuard/values.yaml and commit — see helm/kuard/README.md.
+#
+# Wave 1: needs the Argo Rollouts CRDs (wave -1) and cert-manager/ingress.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kuard
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/T-CLO-902-KubeQuest/KubeQuest.git
+    targetRevision: main
+    path: helm/kuard
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kuard
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

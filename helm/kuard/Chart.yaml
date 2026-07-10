@@ -1,0 +1,8 @@
+apiVersion: v2
+name: kuard
+description: kuard (Kubernetes Up And Running Demo) — demo workload for the monitoring/rollback live demo
+type: application
+version: 0.1.0
+# Tracks the upstream image tag (gcr.io/kuar-demo/kuard-amd64). The colored
+# tags (blue/green/purple) make a canary rollout visually obvious in the UI.
+appVersion: "blue"

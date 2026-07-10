@@ -1,0 +1,78 @@
+replicaCount: 2
+
+image:
+  # Upstream demo image from "Kubernetes Up and Running". The blue/green/purple
+  # tags serve the same app with a different banner color, which makes a canary
+  # rollout (and its rollback) visible at a glance in the browser.
+  repository: gcr.io/kuar-demo/kuard-amd64
+  # Empty by default: falls back to Chart.appVersion ("blue").
+  tag: ""
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  host: kuard.kubequest.epitech.beer
+  path: /
+  pathType: Prefix
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    enabled: true
+    # Defaults to "<fullname>-tls" when empty.
+    secretName: ""
+
+# Deliberately tight limits: the whole point of this workload is to demo what
+# happens when they are hit.
+#   - Memory: kuard idles around 10-20 MiB; allocating ~256 MiB from its /mem
+#     page blows through the 128 Mi limit => OOMKilled => restart (visible on
+#     the Grafana "kuard demo" dashboard).
+#   - CPU: enabling the KeyGen workload from the kuard UI saturates the 200m
+#     limit => CFS throttling (also graphed on the dashboard).
+resources:
+  requests:
+    cpu: 50m
+    memory: 32Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+# Argo Rollouts canary strategy, same mechanism as sample-app: the analysis
+# probes the canary-only Service; if the canary never becomes Ready (e.g.
+# forceUnhealthy below), the AnalysisRun fails and the Rollout aborts back to
+# the stable ReplicaSet.
+canary:
+  steps:
+    - setWeight: 50
+    - pause:
+        duration: 60s
+  analysis:
+    startingStep: 0
+
+# Keep greater than the sum of the canary pauses above.
+progressDeadlineSeconds: 180
+
+# Demo hook, same idea as sample-app's app.forceUnhealthy: when true, the
+# readinessProbe targets a path kuard does not serve (404), so the canary pods
+# never become Ready, the canary Service has no endpoints, the analysis web
+# probe fails and Argo Rollouts rolls back automatically. Flip it to true in
+# Git, watch the rollback, flip it back.
+forceUnhealthy: false
+
+nodeSelector: {}
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: kuard
+          topologyKey: kubernetes.io/hostname
+
+tolerations: []

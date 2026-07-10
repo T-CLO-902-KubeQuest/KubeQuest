@@ -1,0 +1,77 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "kuard.fullname" . }}
+  labels:
+    {{- include "kuard.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "kuard.selectorLabels" . | nindent 6 }}
+  # A canary that never reaches Ready (forceUnhealthy) keeps the Rollout
+  # Progressing; Argo Rollouts marks it Degraded past this deadline.
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  strategy:
+    canary:
+      # Argo Rollouts rewrites this Service's selector so it only fronts the
+      # canary pods; the analysis below probes it, so only the canary's health
+      # decides promotion vs rollback (the stable pods can't mask a broken
+      # canary).
+      canaryService: {{ include "kuard.fullname" . }}-canary
+      stableService: {{ include "kuard.fullname" . }}
+      analysis:
+        startingStep: {{ .Values.canary.analysis.startingStep }}
+        templates:
+          - templateName: {{ include "kuard.fullname" . }}-canary-health
+      steps:
+        {{- toYaml .Values.canary.steps | nindent 8 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kuard.labels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: kuard
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          # Liveness stays on /healthy: after an OOMKill the kubelet restarts
+          # the container regardless, this just covers a hung process.
+          livenessProbe:
+            httpGet:
+              path: /healthy
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          # Demo hook: with forceUnhealthy the probe targets a path kuard does
+          # not serve (404), so the pod never becomes Ready and the canary
+          # analysis fails => automatic rollback.
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.forceUnhealthy | ternary "/force-unhealthy" "/ready" }}
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}

@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ include "kuard.fullname" . }}-canary-health
+  labels:
+    {{- include "kuard.labels" . | nindent 4 }}
+spec:
+  metrics:
+    - name: canary-health
+      # Give the canary time to boot and pass its readinessProbe before the
+      # first measurement.
+      initialDelay: 30s
+      interval: 15s
+      count: 4
+      # No successCondition: the web provider succeeds on any 2xx. A canary
+      # that never becomes Ready (forceUnhealthy) leaves the canary Service
+      # without endpoints, so every request errors; past failureLimit the
+      # AnalysisRun fails -> the Rollout aborts and rolls back to stable.
+      failureLimit: 2
+      provider:
+        web:
+          # Canary-only Service (selector managed by Argo Rollouts), so the
+          # stable pods cannot mask a broken canary.
+          url: http://{{ include "kuard.fullname" . }}-canary.{{ .Release.Namespace }}.svc.cluster.local/healthy
+          timeoutSeconds: 5

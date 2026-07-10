@@ -24,8 +24,9 @@ spec:
       # (Deployment + Service + ServiceMonitor) pour le 2e critère d'acceptation.
       # loki.yaml/promtail.yaml = agrégation de logs (#15) ; grafana-ingress.yaml
       # = exposition Grafana (#14) ; loki-dashboard.yaml = dashboard logs custom ;
-      # soutenance-dashboard.yaml = dashboard de démo scaling/santé/logs (#23/#24).
-      include: "{monitoring.yaml,example-app.yaml,loki.yaml,promtail.yaml,grafana-ingress.yaml,loki-dashboard.yaml,soutenance-dashboard.yaml}"
+      # soutenance-dashboard.yaml = dashboard de démo scaling/santé/logs (#23/#24) ;
+      # kuard-dashboard.yaml = dashboard de démo OOM/CPU limits/rollback (kuard).
+      include: "{monitoring.yaml,example-app.yaml,loki.yaml,promtail.yaml,grafana-ingress.yaml,loki-dashboard.yaml,soutenance-dashboard.yaml,kuard-dashboard.yaml}"
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

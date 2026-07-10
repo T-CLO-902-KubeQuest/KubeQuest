@@ -62,7 +62,11 @@ hosts {
    18.158.153.65 argocd.kubequest.epitech.beer
    18.158.153.65 headlamp.kubequest.epitech.beer
    18.158.153.65 dex.kubequest.epitech.beer
+   18.158.153.65 auth.kubequest.epitech.beer
    18.158.153.65 grafana.kubequest.epitech.beer
+   18.158.153.65 app.kubequest.epitech.beer
+   18.158.153.65 vault.kubequest.epitech.beer
+   18.158.153.65 kuard.kubequest.epitech.beer
    fallthrough
 }
 ```

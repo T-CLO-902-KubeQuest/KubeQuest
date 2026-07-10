@@ -12,7 +12,7 @@ app:
   # becomes Ready and Argo Rollouts rolls it back automatically. Set back to
   # false to recover. The app is deployed as an Argo Rollouts Rollout (canary);
   # see helm/sample-app.
-  forceUnhealthy: false
+  forceUnhealthy: true
 
 db:
   # MySQL runs in the "mysql" namespace; the app in "sample-app". The short name

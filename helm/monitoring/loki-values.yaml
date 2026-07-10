@@ -53,6 +53,11 @@ singleBinary:
     size: 5Gi
   nodeSelector:
     workload: monitoring
+  tolerations:
+    - key: workload
+      operator: Equal
+      value: monitoring
+      effect: NoSchedule
 
 backend:
   replicas: 0

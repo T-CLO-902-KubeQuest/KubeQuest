@@ -10,14 +10,21 @@
 #     — pas d'admin par défaut. Alertmanager reste hors scope.
 #   - Stockage emptyDir + rétention courte : VMs limitées et éteintes le soir.
 #   - Stack lourde épinglée sur le nœud monitoring dédié (label workload=monitoring).
+#   - Nœud RÉSERVÉ à l'observabilité : taint workload=monitoring:NoSchedule sur le
+#     nœud, d'où la toleration en plus du nodeSelector sur chaque composant pinné.
 
 # --- Scope : Visualisation (Grafana, OIDC Dex) — alerting hors scope ---
 grafana:
   enabled: true
 
-  # Ordonnancement sur le nœud dédié monitoring
+  # Ordonnancement sur le nœud dédié monitoring (réservé par une taint)
   nodeSelector:
     workload: monitoring
+  tolerations:
+    - key: workload
+      operator: Equal
+      value: monitoring
+      effect: NoSchedule
 
   # Rétention et stockage temporaire (emptyDir pour la démo)
   persistence:
@@ -86,6 +93,11 @@ alertmanager:
 prometheusOperator:
   nodeSelector:
     workload: monitoring
+  tolerations:
+    - key: workload
+      operator: Equal
+      value: monitoring
+      effect: NoSchedule
   resources:
     requests:
       cpu: 50m
@@ -103,9 +115,14 @@ prometheus:
     # Stockage éphémère : aucun storageSpec => le chart monte un emptyDir.
     # L'historique est perdu au restart du pod — acceptable pour la démo.
 
-    # Ordonnancement sur le nœud dédié.
+    # Ordonnancement sur le nœud dédié (réservé par une taint).
     nodeSelector:
       workload: monitoring
+    tolerations:
+      - key: workload
+        operator: Equal
+        value: monitoring
+        effect: NoSchedule
 
     # CLÉ pour « scraper les apps qui déclarent des endpoints » : par défaut
     # Prometheus ne sélectionne que les ServiceMonitor portant le label de la
@@ -127,6 +144,11 @@ prometheus:
 kube-state-metrics:
   nodeSelector:
     workload: monitoring
+  tolerations:
+    - key: workload
+      operator: Equal
+      value: monitoring
+      effect: NoSchedule
   resources:
     requests:
       cpu: 20m

@@ -65,7 +65,7 @@ progressDeadlineSeconds: 180
 # never become Ready, the canary Service has no endpoints, the analysis web
 # probe fails and Argo Rollouts rolls back automatically. Flip it to true in
 # Git, watch the rollback, flip it back.
-forceUnhealthy: false
+forceUnhealthy: true
 
 nodeSelector: {}
 

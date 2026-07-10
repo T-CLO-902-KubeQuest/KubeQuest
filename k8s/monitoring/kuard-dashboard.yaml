@@ -54,9 +54,24 @@ data:
         },
         {
           "type": "stat",
-          "title": "Restarts (15m)",
+          "title": "Instances (pods Running)",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 6, "w": 4, "x": 0, "y": 1 },
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 1 }, { "color": "blue", "value": 2 } ] } } },
+          "options": { "colorMode": "value", "graphMode": "area", "textMode": "value" },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "count(kube_pod_status_phase{namespace=\"$namespace\", phase=\"Running\"} == 1)",
+              "legendFormat": "running"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Restarts (15m)",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 6, "w": 4, "x": 4, "y": 1 },
           "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } },
           "options": { "colorMode": "value", "graphMode": "area", "textMode": "value" },
           "targets": [
@@ -71,7 +86,7 @@ data:
           "type": "stat",
           "title": "Pods OOMKilled (dernier arret)",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 6, "w": 4, "x": 4, "y": 1 },
+          "gridPos": { "h": 6, "w": 4, "x": 8, "y": 1 },
           "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } },
           "options": { "colorMode": "value", "graphMode": "none", "textMode": "value" },
           "targets": [
@@ -86,7 +101,7 @@ data:
           "type": "timeseries",
           "title": "Restarts par pod",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 6, "w": 8, "x": 8, "y": 1 },
+          "gridPos": { "h": 6, "w": 6, "x": 12, "y": 1 },
           "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60 } } },
           "targets": [
             {
@@ -100,7 +115,7 @@ data:
           "type": "timeseries",
           "title": "Raison d'attente (CrashLoopBackOff, ...)",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 6, "w": 8, "x": 16, "y": 1 },
+          "gridPos": { "h": 6, "w": 6, "x": 18, "y": 1 },
           "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "fillOpacity": 20 } } },
           "targets": [
             {

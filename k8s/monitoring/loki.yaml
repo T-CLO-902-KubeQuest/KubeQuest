@@ -368,6 +368,11 @@ spec:
             topologyKey: kubernetes.io/hostname
       nodeSelector:
         workload: monitoring
+      tolerations:
+        - effect: NoSchedule
+          key: workload
+          operator: Equal
+          value: monitoring
       volumes:
         - name: tmp
           emptyDir: {}

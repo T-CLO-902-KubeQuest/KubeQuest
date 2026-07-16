@@ -116,22 +116,32 @@ workers), so we designate one worker with a label:
 # Pick the worker that does NOT run mysql-0 (its local-path PVC pins it there):
 kubectl get pod -n mysql -o wide        # note the NODE of mysql-0
 kubectl label node <other-worker> workload=monitoring
+kubectl taint node <other-worker> workload=monitoring:NoSchedule
 ```
 
-The heavy components (Prometheus, Prometheus Operator, kube-state-metrics) carry
-`nodeSelector: workload=monitoring` in `values.yaml`. **`node-exporter` is the
-exception**: it is a DaemonSet with a broad toleration so it runs on *every* node
-(including the tainted master) to report each node's metrics — restricting it to
-the monitoring node would lose the other nodes' metrics.
+The heavy components (Prometheus, Prometheus Operator, Grafana, Loki,
+kube-state-metrics) carry `nodeSelector: workload=monitoring` **and** the
+matching toleration in `values.yaml` / `loki-values.yaml`. **`node-exporter` and
+`promtail` are the exception**: they are DaemonSets with a broad toleration so
+they run on *every* node (including the tainted master) to report each node's
+metrics/logs — restricting them to the monitoring node would lose the other
+nodes' signals.
 
 > **Prerequisite:** apply the label **before** Argo CD syncs, otherwise the
 > Prometheus pod stays `Pending` (nodeSelector unsatisfied). That is expected,
-> not a bug. We use a `nodeSelector` (attract) rather than a taint (reserve) to
-> avoid evicting MySQL, which is fine for the criterion.
+> not a bug.
 >
-> GitOps evolution: set `--node-labels=workload=monitoring` on the chosen
-> worker's `kubeadm join` in the Ansible `workers` role, so the label is
-> reproducible if the cluster is recreated.
+> The node is **reserved** for observability: the `nodeSelector` attracts the
+> stack, the `NoSchedule` taint keeps everything else off. `NoSchedule` does not
+> evict pods already running there — after tainting, delete any lingering
+> non-monitoring pods (their controllers reschedule them elsewhere). Also note
+> that Loki's `local-path` PVC pins it to this node anyway, so the reservation
+> also formalises that existing constraint.
+>
+> GitOps evolution: set `--node-labels=workload=monitoring` and
+> `--register-with-taints=workload=monitoring:NoSchedule` on the chosen worker's
+> kubelet in the Ansible `workers` role, so both are reproducible if the cluster
+> is recreated.
 
 ## Access (not public without auth)
 **Prometheus** stays internal: a **ClusterIP** Service, no Ingress. Grafana
